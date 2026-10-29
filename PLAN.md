@@ -6,14 +6,13 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 
 ## Done
 
-(nothing yet)
+- **2026-10-29: First milestone.** `npm run fetch-events` pulls today's free-food events from OneIllinois and the page lists them (club, name, time, location, food), with empty and error messages. Kabir checked it in the browser with one real event (GSRC's Queer-O-Ween). 11 tests run against a saved sample feed, and there's a README.
 
 ## Next
 
-1. **Finish the first milestone (in progress, untested).** Written but not yet run or tested: the Vite + TypeScript project, the OneIllinois feed parser (`scripts/sources/oneIllinois.ts`), the free-food word check (`scripts/freeFood.ts`), the fetch script (`scripts/fetch-events.ts`, writes `public/events.json`), and the page (`index.html`, `src/main.ts`, `src/style.css`). Still to do: run the type check and fix any errors, write tests with a saved sample feed as a fixture, add a README, run `npm run fetch-events` and `npm run dev`, and have Kabir open the page (expect "No free food today" or a list).
-2. Hide events that have already ended today.
-3. Run the fetch on a schedule (GitHub Actions) and host the site from a link.
-4. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
+1. Hide events that have already ended today.
+2. Run the fetch on a schedule (GitHub Actions) and host the site from a link.
+3. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
 
 ## Decisions
 

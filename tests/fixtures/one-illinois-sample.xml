@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Trimmed sample of https://one.illinois.edu/rss_events. The first item is real (2026-10-29); the rest are made up to cover edge cases. -->
+<rss version="2.0" xmlns:cg="https://www.campusgroups.com/rss_calendar">
+	<channel>
+		<title>urbanachampaign Events</title>
+		<link>https://one.illinois.edu/events</link>
+		<item>
+			<eventId>500183</eventId>
+			<group>Gender &amp; Sexuality Resource Center (GSRC)</group>
+			<title>Queer-O-Ween</title>
+			<description>Join us for Queer-O-Ween for tarot readings, crafts, a photo booth, costume contest and snacks. Our theme this year is Whimsical Witch. </description>
+			<fullDescription>Join us for Queer-O-Ween for tarot readings, crafts, a photo booth, costume contest and snacks. Our theme this year is Whimsical Witch. </fullDescription>
+			<eventLink>https://one.illinois.edu/GSRC/rsvp?id=500183</eventLink>
+			<eventLocation>Private Location (sign in to display)</eventLocation>
+			<eventStartDateTime>2026-10-29T19:00:00.0000000-05:00</eventStartDateTime>
+			<eventEndDateTime>2026-10-29T21:00:00.0000000-05:00</eventEndDateTime>
+			<link>https://one.illinois.edu/GSRC/rsvp?id=500183</link>
+			<foodProvided>0</foodProvided>
+		</item>
+		<item>
+			<eventId>900001</eventId>
+			<group>Chess Club</group>
+			<title>Weekly Blitz Night</title>
+			<description>Bring a board if you have one.</description>
+			<fullDescription>&lt;p&gt;Bring a board if you have one.&lt;/p&gt;</fullDescription>
+			<eventLink>https://one.illinois.edu/chess/rsvp?id=900001</eventLink>
+			<eventLocation>Illini Union 210</eventLocation>
+			<eventStartDateTime>2026-10-29T18:00:00.0000000-05:00</eventStartDateTime>
+			<eventEndDateTime>2026-10-29T20:00:00.0000000-05:00</eventEndDateTime>
+			<foodProvided>1</foodProvided>
+		</item>
+		<item>
+			<eventId>900002</eventId>
+			<group>Robotics Society</group>
+			<title>General Meeting</title>
+			<description>Project updates for the semester.</description>
+			<fullDescription>&lt;p&gt;Project updates. &lt;strong&gt;Free Pizza&lt;/strong&gt; for everyone!&lt;/p&gt;</fullDescription>
+			<eventLink>javascript:alert(1)</eventLink>
+			<eventLocation>  ECEB 1002  </eventLocation>
+			<eventStartDateTime>2026-10-29T12:00:00.0000000-05:00</eventStartDateTime>
+			<eventEndDateTime>2026-10-29T13:00:00.0000000-05:00</eventEndDateTime>
+			<foodProvided>0</foodProvided>
+		</item>
+		<item>
+			<eventId>900003</eventId>
+			<group>Service Club</group>
+			<title>Canned Food Drive</title>
+			<description>Drop off canned food for the local food pantry.</description>
+			<fullDescription>Drop off canned food for the local food pantry.</fullDescription>
+			<eventLink>https://one.illinois.edu/service/rsvp?id=900003</eventLink>
+			<eventLocation>Quad</eventLocation>
+			<eventStartDateTime>2026-10-29T10:00:00.0000000-05:00</eventStartDateTime>
+			<eventEndDateTime>2026-10-29T14:00:00.0000000-05:00</eventEndDateTime>
+			<foodProvided>0</foodProvided>
+		</item>
+		<item>
+			<eventId>900004</eventId>
+			<group>Study Group</group>
+			<title>Midterm Review</title>
+			<description>Bring your notes.</description>
+			<fullDescription>Bring your notes.</fullDescription>
+			<eventLink>https://one.illinois.edu/study/rsvp?id=900004</eventLink>
+			<eventLocation>Grainger Library</eventLocation>
+			<eventStartDateTime>2026-10-29T16:00:00.0000000-05:00</eventStartDateTime>
+			<eventEndDateTime>2026-10-29T17:00:00.0000000-05:00</eventEndDateTime>
+			<foodProvided>0</foodProvided>
+		</item>
+		<item>
+			<eventId>900005</eventId>
+			<group>Cooking Club</group>
+			<title>Taco Tuesday</title>
+			<eventLocation>Busey-Evans</eventLocation>
+			<foodProvided>1</foodProvided>
+		</item>
+	</channel>
+</rss>
