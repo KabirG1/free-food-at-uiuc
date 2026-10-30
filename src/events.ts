@@ -45,3 +45,9 @@ export function eventsOnDate(events: FoodEvent[], date: string): FoodEvent[] {
 export function eventsNotEnded(events: FoodEvent[], now: Date): FoodEvent[] {
   return events.filter((event) => Date.parse(event.end) > now.getTime());
 }
+
+/** Splits events into ones that have already started and ones starting later, keeping their order. */
+export function splitByStarted(events: FoodEvent[], now: Date): { happeningNow: FoodEvent[]; laterToday: FoodEvent[] } {
+  const started = (event: FoodEvent) => Date.parse(event.start) <= now.getTime();
+  return { happeningNow: events.filter(started), laterToday: events.filter((event) => !started(event)) };
+}

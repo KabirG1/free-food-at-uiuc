@@ -4,7 +4,7 @@ A mobile-friendly web page that lists UIUC club events giving out free food toda
 
 **Open the site: https://kabirg1.github.io/free-food-at-uiuc/**
 
-Each event shows the club, event name, time, location, and the food mentioned. Events disappear from the list once they end.
+Events are grouped under "Happening now" and "Later today". Each shows its start and end time, the club, a location that opens in Google Maps, and the food mentioned. Events disappear from the list once they end.
 
 ## Setup
 
@@ -28,7 +28,8 @@ npm install
 
 - `scripts/sources/` has one module per data source. Each returns events in the shared `FoodEvent` shape from `src/events.ts`.
 - `scripts/fetch-events.ts` runs every source, keeps events starting today in Champaign's time zone, and saves them. If a source fails, the others still show and the page says which one was unreachable.
-- `src/main.ts` loads `events.json` and shows the list, or a "No free food today" message.
+- `src/main.ts` loads `events.json` and shows the list, or a "No free food today" message. `src/location.ts` turns locations into map links.
+- `src/style.css` holds the design system: Tailwind CSS with its default colors, sizes, and fonts removed, so only the Illinois colors, fonts, and spacing defined there can be used.
 
 ## Deploying
 

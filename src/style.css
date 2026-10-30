@@ -1,101 +1,91 @@
+/* The design system. Tailwind's default palette, sizes, and fonts are removed, so only the values below exist. */
+
+@import "@fontsource-variable/montserrat";
+@import "@fontsource-variable/source-sans-3";
+@import "tailwindcss";
+
+@theme {
+  --*: initial;
+
+  /* Illinois brand fonts: Montserrat for headlines and times, Source Sans for everything else. */
+  --font-display: "Montserrat Variable", "Arial Black", sans-serif;
+  --font-body: "Source Sans 3 Variable", Arial, sans-serif;
+
+  --text-sm: 0.875rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.875rem;
+
+  --font-weight-normal: 400;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --tracking-wide: 0.08em;
+
+  /* Spacing steps of 4px: p-4 is 16px. */
+  --spacing: 4px;
+  --radius-sm: 4px;
+  --container-content: 40rem;
+}
+
+/* Colors switch with the system's dark mode. Contrast ratios are against the page background. */
 :root {
-  --background: #f7f5f2;
-  --card: #ffffff;
-  --text: #1d1d1f;
-  --muted: #5f5f66;
-  --accent: #e84a27;
-  --error: #b3261e;
-  --border: #e3e0db;
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.45;
+  --brand: #13294b; /* Illini Blue, header background */
+  --on-brand: #ffffff;
+  --on-brand-muted: #c8d1df;
+  --brand-accent: #ff5f05; /* Illini Orange, only on the blue header (4.76:1) */
+  --page: #ffffff;
+  --ink: #13294b; /* 14.5:1 */
+  --muted: #56637a; /* 6.1:1 */
+  --food: #c2410c; /* darker orange for small text, 5.2:1 */
+  --line: #dde1e8;
+  --error: #b42318;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #141416;
-    --card: #1f1f23;
-    --text: #f2f2f4;
-    --muted: #a5a5ad;
-    --accent: #ff7a59;
+    --page: #0e1e36;
+    --ink: #eef1f5; /* 14.7:1 */
+    --muted: #a3afc2; /* 7.5:1 */
+    --food: #ff7a2e; /* 6.4:1 */
+    --line: #24375a;
     --error: #ff8a80;
-    --border: #33333a;
   }
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-on-brand-muted: var(--on-brand-muted);
+  --color-brand-accent: var(--brand-accent);
+  --color-page: var(--page);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-food: var(--food);
+  --color-line: var(--line);
+  --color-error: var(--error);
 }
 
-body {
-  margin: 0 auto;
-  max-width: 40rem;
-  padding: 1.5rem 1rem 3rem;
-  background: var(--background);
-  color: var(--text);
-  font-size: 1.05rem;
-}
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
 
-h1 {
-  margin: 0;
-  color: var(--accent);
-  font-size: 1.75rem;
-}
+  body {
+    background-color: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+  }
 
-#subtitle {
-  margin: 0.25rem 0 1.25rem;
-  color: var(--muted);
-}
-
-.events {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.event {
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  background: var(--card);
-}
-
-.event p {
-  margin: 0.2rem 0 0;
-}
-
-.event-title {
-  color: var(--text);
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
-.event-club,
-.event-details {
-  color: var(--muted);
-}
-
-.event-food {
-  font-weight: 500;
-}
-
-.status {
-  padding: 1.5rem 1rem;
-  border-radius: 0.75rem;
-  background: var(--card);
-  text-align: center;
-}
-
-.status-error {
-  color: var(--error);
-}
-
-#updated {
-  margin-top: 1.5rem;
-  color: var(--muted);
-  font-size: 0.9rem;
-  text-align: center;
+  a:focus-visible {
+    outline: 2px solid var(--color-food);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
 }

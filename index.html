@@ -3,18 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#13294b" />
     <title>Free Food UIUC</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>Free Food UIUC</h1>
-      <p id="subtitle">Club events with free food today</p>
+    <header class="border-b-4 border-brand-accent bg-brand text-on-brand">
+      <div class="mx-auto max-w-content px-4 pt-7 pb-5">
+        <h1 class="font-display text-2xl leading-tight font-extrabold">Free Food <span class="text-brand-accent">UIUC</span></h1>
+        <p id="subtitle" class="mt-1 text-on-brand-muted">Club events with free food today</p>
+      </div>
     </header>
-    <main id="content" aria-live="polite">
-      <p class="status">Loading today's events…</p>
+    <main id="content" class="mx-auto max-w-content px-4" aria-live="polite">
+      <p class="mt-8 text-muted">Loading today's events…</p>
     </main>
-    <footer id="updated"></footer>
+    <footer id="updated" class="mx-auto max-w-content px-4 pt-8 pb-12 text-sm text-muted"></footer>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

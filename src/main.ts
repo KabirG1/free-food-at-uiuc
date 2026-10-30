@@ -1,4 +1,5 @@
-import { CAMPUS_TIME_ZONE, eventsNotEnded, type EventsFile, type FoodEvent } from "./events.ts";
+import { CAMPUS_TIME_ZONE, eventsNotEnded, splitByStarted, type EventsFile, type FoodEvent } from "./events.ts";
+import { isPrivateLocation, mapLink } from "./location.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 const subtitle = document.querySelector<HTMLElement>("#subtitle")!;
@@ -12,6 +13,8 @@ const dayFormat = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
+const LINK_CLASSES = "underline decoration-line decoration-1 underline-offset-3 hover:decoration-current";
+
 async function loadEvents(): Promise<void> {
   let data: EventsFile;
   try {
@@ -21,75 +24,121 @@ async function loadEvents(): Promise<void> {
     }
     data = await response.json();
   } catch {
-    showMessage("Couldn't load today's events. Check your connection and refresh the page.", "error");
+    showMessage("Couldn't load today's events", "Check your connection and refresh the page.", "error");
     return;
   }
 
   // The file stores a plain date; noon avoids it shifting to the previous day in any time zone.
-  subtitle.textContent = `Club events with free food on ${dayFormat.format(new Date(`${data.date}T12:00:00`))}`;
-  updated.textContent = `Last checked at ${timeFormat.format(new Date(data.generatedAt))}`;
+  const dayName = dayFormat.format(new Date(`${data.date}T12:00:00`));
+  subtitle.textContent = dayName;
+  updated.textContent = `Events from OneIllinois, last checked at ${timeFormat.format(new Date(data.generatedAt))}.`;
 
   if (data.events.length === 0) {
     if (data.failedSources.length > 0) {
-      showMessage(`Couldn't reach ${data.failedSources.join(", ")}, so today's events may be missing. Try again later.`, "error");
+      showMessage(`Couldn't reach ${data.failedSources.join(", ")}`, "Today's events may be missing. Try again later.", "error");
     } else {
-      showMessage("No free food today. Check back tomorrow!", "empty");
+      showMessage("No free food today", "Events are checked four times a day, so check back tomorrow.", "empty");
     }
     return;
   }
 
   // The saved file only refreshes a few times a day, so finished events are hidden here using the viewer's clock.
-  const currentEvents = eventsNotEnded(data.events, new Date());
+  const now = new Date();
+  const currentEvents = eventsNotEnded(data.events, now);
   if (currentEvents.length === 0) {
-    showMessage("Today's free food is over. Check back tomorrow!", "empty");
+    showMessage("Today's free food is over", "Check back tomorrow.", "empty");
     return;
   }
 
-  const list = document.createElement("ul");
-  list.className = "events";
-  list.append(...currentEvents.map(renderEvent));
-  content.replaceChildren(list);
+  subtitle.textContent = `${dayName} · ${currentEvents.length} ${currentEvents.length === 1 ? "event" : "events"} with free food`;
+  const { happeningNow, laterToday } = splitByStarted(currentEvents, now);
+  const sections = [renderSection("Happening now", happeningNow), renderSection("Later today", laterToday)];
+  content.replaceChildren(...sections.filter((section) => section !== null));
   if (data.failedSources.length > 0) {
-    content.prepend(statusParagraph(`Some sources couldn't be reached (${data.failedSources.join(", ")}), so this list may be incomplete.`, "error"));
+    content.prepend(
+      element("p", "mt-6 text-error", `Couldn't reach ${data.failedSources.join(", ")}, so this list may be incomplete.`),
+    );
   }
 }
 
-function renderEvent(event: FoodEvent): HTMLLIElement {
-  const item = document.createElement("li");
-  item.className = "event";
+function renderSection(heading: string, events: FoodEvent[]): HTMLElement | null {
+  if (events.length === 0) {
+    return null;
+  }
+  const section = element("section", "mt-8", "");
+  const title = element("h2", "font-display text-sm font-bold tracking-wide text-muted uppercase", heading);
+  const list = element("ul", "mt-2 divide-y divide-line border-y border-line", "");
+  list.append(...events.map(renderEvent));
+  section.append(title, list);
+  return section;
+}
 
-  const title = document.createElement("a");
-  title.className = "event-title";
+function renderEvent(event: FoodEvent): HTMLLIElement {
+  const item = element("li", "grid grid-cols-[6rem_1fr] gap-x-4 py-4", "");
+
+  const when = element("div", "", "");
+  when.append(
+    element("p", "font-display text-lg leading-tight font-bold", timeFormat.format(new Date(event.start))),
+    element("p", "mt-1 text-sm text-muted", `to ${timeFormat.format(new Date(event.end))}`),
+  );
+
+  const details = element("div", "min-w-0", "");
+  const title = element("a", `text-lg leading-tight font-semibold ${LINK_CLASSES}`, event.title);
   title.href = event.url;
   title.target = "_blank";
   title.rel = "noopener noreferrer";
-  title.textContent = event.title;
+  details.append(
+    title,
+    element("p", "mt-1 text-muted", event.club),
+    renderLocation(event.location),
+    element("p", "mt-2 font-semibold text-food", describeFood(event)),
+  );
 
-  const club = document.createElement("p");
-  club.className = "event-club";
-  club.textContent = event.club;
-
-  const details = document.createElement("p");
-  details.className = "event-details";
-  details.textContent = `${timeFormat.format(new Date(event.start))} – ${timeFormat.format(new Date(event.end))} · ${event.location}`;
-
-  const food = document.createElement("p");
-  food.className = "event-food";
-  food.textContent = event.foodMentions.length > 0 ? `🍕 Mentions ${event.foodMentions.join(", ")}` : "🍕 Club says food is provided";
-
-  item.append(title, club, details, food);
+  item.append(when, details);
   return item;
 }
 
-function showMessage(text: string, kind: "empty" | "error"): void {
-  content.replaceChildren(statusParagraph(text, kind));
+function renderLocation(location: string): HTMLParagraphElement {
+  const paragraph = element("p", "mt-1", "");
+  const link = mapLink(location);
+  if (link) {
+    const anchor = element("a", LINK_CLASSES, location);
+    anchor.href = link;
+    anchor.target = "_blank";
+    anchor.rel = "noopener noreferrer";
+    paragraph.append(anchor);
+  } else if (isPrivateLocation(location)) {
+    paragraph.className += " text-muted";
+    paragraph.textContent = "Location shown after signing in to OneIllinois";
+  } else {
+    paragraph.textContent = location;
+  }
+  return paragraph;
 }
 
-function statusParagraph(text: string, kind: "empty" | "error"): HTMLParagraphElement {
-  const paragraph = document.createElement("p");
-  paragraph.className = `status status-${kind}`;
-  paragraph.textContent = text;
-  return paragraph;
+/** "Pizza, boba" from the words found, or "Food provided" when the club only ticked the box. */
+function describeFood(event: FoodEvent): string {
+  if (event.foodMentions.length === 0) {
+    return "Food provided";
+  }
+  const list = event.foodMentions.join(", ");
+  return list.charAt(0).toUpperCase() + list.slice(1);
+}
+
+function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.className = className;
+  node.textContent = text;
+  return node;
+}
+
+function showMessage(heading: string, detail: string, kind: "empty" | "error"): void {
+  const block = element("div", "mt-10", "");
+  block.append(
+    element("h2", `font-display text-xl leading-tight font-bold ${kind === "error" ? "text-error" : ""}`, heading),
+    element("p", "mt-2 text-muted", detail),
+  );
+  content.replaceChildren(block);
 }
 
 void loadEvents();

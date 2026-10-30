@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campusDate, eventsNotEnded, eventsOnDate, type FoodEvent } from "../src/events.ts";
+import { campusDate, eventsNotEnded, eventsOnDate, splitByStarted, type FoodEvent } from "../src/events.ts";
 import { findFoodMentions } from "../scripts/freeFood.ts";
 
 function eventStarting(id: string, start: string, end = start): FoodEvent {
@@ -52,5 +52,18 @@ describe("eventsNotEnded", () => {
   it("hides an event at the moment it ends", () => {
     const now = new Date("2026-10-29T21:00:00-05:00");
     expect(eventsNotEnded(events, now)).toEqual([]);
+  });
+});
+
+describe("splitByStarted", () => {
+  it("puts events that have started under now and the rest under later", () => {
+    const events = [
+      eventStarting("started", "2026-10-29T14:00:00-05:00", "2026-10-29T16:00:00-05:00"),
+      eventStarting("starts-now", "2026-10-29T15:00:00-05:00", "2026-10-29T16:00:00-05:00"),
+      eventStarting("later", "2026-10-29T19:00:00-05:00", "2026-10-29T21:00:00-05:00"),
+    ];
+    const { happeningNow, laterToday } = splitByStarted(events, new Date("2026-10-29T15:00:00-05:00"));
+    expect(happeningNow.map((event) => event.id)).toEqual(["started", "starts-now"]);
+    expect(laterToday.map((event) => event.id)).toEqual(["later"]);
   });
 });
