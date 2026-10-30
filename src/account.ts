@@ -1,7 +1,7 @@
 // The Account page: sign in with an Illinois Google account, sign out, or delete the account.
 
 import type { User } from "@supabase/supabase-js";
-import { currentUser, deleteMyAccount, fullName, signInWithGoogle, signOut, supabase } from "./auth.ts";
+import { currentUser, deleteMyAccount, fullName, renderGoogleButton, signOut, supabase } from "./auth.ts";
 import { element } from "./eventList.ts";
 import { setUpPage } from "./layout.ts";
 
@@ -15,35 +15,36 @@ async function showAccount(): Promise<void> {
     content.replaceChildren(heading("Accounts aren't set up"), paragraph("This copy of the site has no sign-in settings."));
     return;
   }
-  // Supabase sends people back here with an error when sign-in fails, e.g. a non-Illinois account.
-  const signInError = readSignInError();
   const user = await currentUser();
-  content.replaceChildren(...(user ? signedIn(user) : signedOut(signInError)));
+  content.replaceChildren(...(user ? signedIn(user) : signedOut()));
 }
 
-function signedOut(signInError: string | null): HTMLElement[] {
-  const button = element("button", `mt-6 ${PRIMARY_BUTTON}`, "Sign in with Google");
-  button.type = "button";
+function signedOut(): HTMLElement[] {
+  // Google draws its own button inside this box once its script loads.
+  const buttonBox = element("div", "mt-6 min-h-11", "");
+  const loading = element("p", "text-muted", "Loading sign-in…");
+  buttonBox.append(loading);
   const status = element("p", "mt-3 text-error", "");
   status.setAttribute("role", "status");
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    button.textContent = "Opening Google…";
-    try {
-      await signInWithGoogle(pageUrlWithoutQuery());
-    } catch {
-      button.disabled = false;
-      button.textContent = "Sign in with Google";
-      status.textContent = "Couldn't start sign-in. Check your connection and try again.";
+  renderGoogleButton(buttonBox, (error) => {
+    if (error) {
+      status.textContent = signInErrorMessage(error);
+    } else {
+      // Reload so the menu shows the student's name too.
+      window.location.reload();
     }
-  });
+  })
+    .then(() => loading.remove())
+    .catch(() => {
+      loading.remove();
+      status.textContent = "Couldn't load Google sign-in. Check your connection and reload the page.";
+    });
 
   return [
     heading("Sign in"),
-    ...(signInError ? [element("p", "mt-4 font-semibold text-error", signInError)] : []),
     paragraph("Sign in with your @illinois.edu Google account. Other Google accounts can't sign in."),
     paragraph("Accounts are optional: everything on the site works without one. Saving events, following clubs, and submitting events are coming next."),
-    button,
+    buttonBox,
     status,
     privacyNote(),
   ];
@@ -89,23 +90,12 @@ function signedIn(user: User): HTMLElement[] {
   ];
 }
 
-/** The error Supabase put in the address after a failed sign-in, removed from the address once read. */
-function readSignInError(): string | null {
-  const params = new URLSearchParams(window.location.search || window.location.hash.slice(1));
-  const description = params.get("error_description");
-  if (description === null && params.get("error") === null) {
-    return null;
-  }
-  window.history.replaceState(null, "", pageUrlWithoutQuery());
-  if (description?.includes("Only @illinois.edu")) {
+function signInErrorMessage(error: Error): string {
+  if (error.message.includes("Only @illinois.edu")) {
     return "Only @illinois.edu accounts can sign in. Choose your Illinois account and try again.";
   }
   // Supabase's own wording, so a problem can be reported and fixed. Shown as plain text, never as HTML.
-  return `Sign-in didn't work. Please try again. (Details: ${description ?? params.get("error")})`;
-}
-
-function pageUrlWithoutQuery(): string {
-  return `${window.location.origin}${window.location.pathname}`;
+  return `Sign-in didn't work. Please try again. (Details: ${error.message})`;
 }
 
 function heading(text: string): HTMLElement {

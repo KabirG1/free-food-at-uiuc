@@ -5,9 +5,10 @@ import { createClient, type User } from "@supabase/supabase-js";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-/** Null when this copy of the site has no Supabase settings, e.g. a fresh clone without a .env.local file. */
-export const supabase = url && publishableKey ? createClient(url, publishableKey) : null;
+/** Null when this copy of the site has no sign-in settings, e.g. a fresh clone without a .env.local file. */
+export const supabase = url && publishableKey && googleClientId ? createClient(url, publishableKey) : null;
 
 export async function currentUser(): Promise<User | null> {
   if (supabase === null) {
@@ -17,19 +18,53 @@ export async function currentUser(): Promise<User | null> {
   return data.session?.user ?? null;
 }
 
-/** Sends the browser to Google, which returns to `returnTo` after sign-in. */
-export async function signInWithGoogle(returnTo: string): Promise<void> {
-  if (supabase === null) {
+/**
+ * Draws Google's own sign-in button in `container`. Google signs the student in right on this page and
+ * hands back a signed ID token, which Supabase checks. Because Supabase never sends the browser to Google
+ * itself, Google's screen names this site instead of supabase.co. `onSignIn` gets null once signed in.
+ */
+export async function renderGoogleButton(container: HTMLElement, onSignIn: (error: Error | null) => void): Promise<void> {
+  if (supabase === null || !googleClientId) {
     return;
   }
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    // `hd` asks Google to show the student's Illinois account first. The real check is in the database.
-    options: { redirectTo: returnTo, queryParams: { hd: "illinois.edu", prompt: "select_account" } },
+  await loadGoogleScript();
+  // Google puts a hash of the nonce inside the token and Supabase compares it with the original,
+  // so a token Google issued for some other sign-in can't be replayed here.
+  const nonce = crypto.randomUUID();
+  google.accounts.id.initialize({
+    client_id: googleClientId,
+    nonce: await sha256Hex(nonce),
+    // Asks Google to offer the student's Illinois account first. The real check is in the database.
+    hd: "illinois.edu",
+    callback: ({ credential }) => {
+      void supabase.auth
+        .signInWithIdToken({ provider: "google", token: credential, nonce })
+        .then(({ error }) => onSignIn(error), onSignIn);
+    },
   });
-  if (error) {
-    throw error;
-  }
+  google.accounts.id.renderButton(container, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
+}
+
+let googleScript: Promise<void> | undefined;
+
+function loadGoogleScript(): Promise<void> {
+  googleScript ??= new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => {
+      googleScript = undefined;
+      reject(new Error("Couldn't load Google sign-in"));
+    };
+    document.head.append(script);
+  });
+  return googleScript;
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function signOut(): Promise<void> {

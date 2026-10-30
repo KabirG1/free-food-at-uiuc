@@ -5,4 +5,6 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   /** Supabase's publishable key. Public by design; access is controlled by the database's rules. */
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
+  /** The Google OAuth client ID, ending in .apps.googleusercontent.com. Public. */
+  readonly VITE_GOOGLE_CLIENT_ID?: string;
 }

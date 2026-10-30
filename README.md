@@ -14,7 +14,7 @@ Requires [Node.js](https://nodejs.org/) 20 or newer.
 npm install
 ```
 
-Sign-in is optional for running the site. To turn it on locally, copy `.env.example` to `.env.local` and fill in the Supabase project URL and publishable key (see **Accounts** below). Without them the site works and simply hides "Sign in".
+Sign-in is optional for running the site. To turn it on locally, copy `.env.example` to `.env.local` and fill in the Supabase project URL, publishable key, and Google client ID (see **Accounts** below). Without them the site works and simply hides "Sign in".
 
 ## Commands
 
@@ -49,5 +49,6 @@ GitHub Pages must be set to deploy from **GitHub Actions** (repository **Setting
 Sign-in uses [Supabase](https://supabase.com) with Google, limited to @illinois.edu accounts.
 
 - `supabase/001_accounts.sql` holds the database setup: the check that refuses non-Illinois emails (a "Before User Created" auth hook), account deletion, and a small `keep_awake` query. Run it in the Supabase SQL Editor, then choose `only_illinois_emails` under **Authentication → Auth Hooks → Before User Created**.
-- `src/auth.ts` talks to Supabase; `account.html` and `src/account.ts` are the Account page; `privacy.html` explains what is stored.
-- The deploy workflow reads the project URL and publishable key from repository variables `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (**Settings → Secrets and variables → Actions → Variables**). Both are public by design. The Google client secret lives only in Supabase.
+- The page signs in with Google's own button (Google Identity Services) and passes Google's ID token to Supabase (`signInWithIdToken`), so Google's sign-in screen names this site rather than supabase.co. The Google OAuth client must list the site's addresses (`https://kabirg1.github.io` and `http://localhost:5173`) under **Authorized JavaScript origins**.
+- `src/auth.ts` talks to Google and Supabase; `account.html` and `src/account.ts` are the Account page; `privacy.html` explains what is stored.
+- The deploy workflow reads the project URL, publishable key, and Google client ID from repository variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `GOOGLE_CLIENT_ID` (**Settings → Secrets and variables → Actions → Variables**). All three are public by design. The Google client secret lives only in Supabase.
