@@ -40,3 +40,8 @@ export function eventsOnDate(events: FoodEvent[], date: string): FoodEvent[] {
     .filter((event) => campusDate(new Date(event.start)) === date)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
 }
+
+/** Keeps the events that have not ended by `now`, including ones already under way. */
+export function eventsNotEnded(events: FoodEvent[], now: Date): FoodEvent[] {
+  return events.filter((event) => Date.parse(event.end) > now.getTime());
+}

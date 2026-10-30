@@ -10,9 +10,13 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 
 ## Next
 
-1. Hide events that have already ended today.
+1. **Hide events that have already ended today (built 2026-10-29, Kabir still to check after an event ends).** The page hides events whose end time has passed, by the viewer's clock, and says "Today's free food is over" when all of today's have ended.
 2. Run the fetch on a schedule (GitHub Actions) and host the site from a link.
 3. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
+
+**Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
+- **Upload a flyer to add an event.** A student uploads a photo or screenshot of a flyer or post, it gets scanned for the club, time, place, and food, and the event is added to the list. Needs somewhere to store submissions and a small server-side step to do the scanning.
+- **GroupMe.** Read messages from club GroupMe chats to find food announcements. GroupMe has an official API, but it only sees chats the connected account is a member of, so it needs a decision on whose account and members' consent.
 
 ## Decisions
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { campusDate, eventsOnDate, type FoodEvent } from "../src/events.ts";
+import { campusDate, eventsNotEnded, eventsOnDate, type FoodEvent } from "../src/events.ts";
 import { findFoodMentions } from "../scripts/freeFood.ts";
 
-function eventStarting(id: string, start: string): FoodEvent {
-  return { id, source: "test", club: "Club", title: id, start, end: start, location: "Union", foodMentions: [], url: "" };
+function eventStarting(id: string, start: string, end = start): FoodEvent {
+  return { id, source: "test", club: "Club", title: id, start, end, location: "Union", foodMentions: [], url: "" };
 }
 
 describe("findFoodMentions", () => {
@@ -34,5 +34,23 @@ describe("eventsOnDate", () => {
       eventStarting("tomorrow", "2026-10-30T12:00:00-05:00"),
     ];
     expect(eventsOnDate(events, "2026-10-29").map((event) => event.id)).toEqual(["noon", "evening"]);
+  });
+});
+
+describe("eventsNotEnded", () => {
+  const events = [
+    eventStarting("lunch", "2026-10-29T12:00:00-05:00", "2026-10-29T13:00:00-05:00"),
+    eventStarting("afternoon", "2026-10-29T14:00:00-05:00", "2026-10-29T16:00:00-05:00"),
+    eventStarting("evening", "2026-10-29T19:00:00-05:00", "2026-10-29T21:00:00-05:00"),
+  ];
+
+  it("hides finished events but keeps ones already under way", () => {
+    const now = new Date("2026-10-29T15:00:00-05:00");
+    expect(eventsNotEnded(events, now).map((event) => event.id)).toEqual(["afternoon", "evening"]);
+  });
+
+  it("hides an event at the moment it ends", () => {
+    const now = new Date("2026-10-29T21:00:00-05:00");
+    expect(eventsNotEnded(events, now)).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import { CAMPUS_TIME_ZONE, type EventsFile, type FoodEvent } from "./events.ts";
+import { CAMPUS_TIME_ZONE, eventsNotEnded, type EventsFile, type FoodEvent } from "./events.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 const subtitle = document.querySelector<HTMLElement>("#subtitle")!;
@@ -38,9 +38,16 @@ async function loadEvents(): Promise<void> {
     return;
   }
 
+  // The saved file only refreshes a few times a day, so finished events are hidden here using the viewer's clock.
+  const currentEvents = eventsNotEnded(data.events, new Date());
+  if (currentEvents.length === 0) {
+    showMessage("Today's free food is over. Check back tomorrow!", "empty");
+    return;
+  }
+
   const list = document.createElement("ul");
   list.className = "events";
-  list.append(...data.events.map(renderEvent));
+  list.append(...currentEvents.map(renderEvent));
   content.replaceChildren(list);
   if (data.failedSources.length > 0) {
     content.prepend(statusParagraph(`Some sources couldn't be reached (${data.failedSources.join(", ")}), so this list may be incomplete.`, "error"));
