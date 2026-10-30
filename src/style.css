@@ -44,6 +44,8 @@
   --food: #c2410c; /* darker orange for small text, 5.2:1 */
   --line: #dde1e8;
   --error: #b42318;
+  --selected: #13294b; /* chosen calendar day */
+  --on-selected: #ffffff; /* 14.5:1 */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,6 +56,8 @@
     --food: #ff7a2e; /* 6.4:1 */
     --line: #24375a;
     --error: #ff8a80;
+    --selected: #eef1f5;
+    --on-selected: #13294b; /* 13:1 */
   }
 }
 
@@ -68,6 +72,8 @@
   --color-food: var(--food);
   --color-line: var(--line);
   --color-error: var(--error);
+  --color-selected: var(--selected);
+  --color-on-selected: var(--on-selected);
 }
 
 @layer base {
@@ -113,7 +119,7 @@
 }
 
 @layer components {
-  /* FAQ dropdowns: an arrow drawn with two borders, pointing down when closed and up when open. */
+  /* Dropdowns (FAQ, earlier today): an arrow drawn with two borders, pointing down when closed and up when open. */
   summary::-webkit-details-marker {
     display: none;
   }
@@ -123,7 +129,7 @@
     outline-offset: 2px;
   }
 
-  .faq-chevron {
+  .chevron {
     width: 0.625rem;
     height: 0.625rem;
     margin-right: 0.25rem;
@@ -133,12 +139,12 @@
     transition: transform 150ms ease-out;
   }
 
-  details[open] .faq-chevron {
+  details[open] .chevron {
     transform: translateY(25%) rotate(225deg);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .faq-chevron {
+    .chevron {
       transition: none;
     }
   }

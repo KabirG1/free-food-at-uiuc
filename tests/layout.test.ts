@@ -17,6 +17,6 @@ describe("navItems", () => {
   });
 
   it("uses relative links so they work under the GitHub Pages folder", () => {
-    expect(navItems("/").map((item) => item.href)).toEqual(["./", "./faq.html", "./contact.html"]);
+    expect(navItems("/").map((item) => item.href)).toEqual(["./", "./calendar.html", "./faq.html", "./contact.html"]);
   });
 });

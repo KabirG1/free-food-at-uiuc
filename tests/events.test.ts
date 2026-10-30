@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { campusDate, eventsNotEnded, eventsOnDate, splitByStarted, type FoodEvent } from "../src/events.ts";
+import { campusDate, datesFrom, eventsNotEnded, eventsOnDate, eventsOnDates, pickDate, splitByStarted, upcomingDates, type FoodEvent } from "../src/events.ts";
 import { findFoodMentions } from "../scripts/freeFood.ts";
 
 function eventStarting(id: string, start: string, end = start): FoodEvent {
@@ -65,5 +65,56 @@ describe("splitByStarted", () => {
     const { happeningNow, laterToday } = splitByStarted(events, new Date("2026-10-29T15:00:00-05:00"));
     expect(happeningNow.map((event) => event.id)).toEqual(["started", "starts-now"]);
     expect(laterToday.map((event) => event.id)).toEqual(["later"]);
+  });
+});
+
+describe("datesFrom", () => {
+  it("counts across the end of a month", () => {
+    expect(datesFrom("2026-10-30", 3)).toEqual(["2026-10-30", "2026-10-31", "2026-11-01"]);
+  });
+
+  it("doesn't skip or repeat a day when daylight saving time ends", () => {
+    expect(datesFrom("2026-10-31", 3)).toEqual(["2026-10-31", "2026-11-01", "2026-11-02"]);
+  });
+});
+
+describe("eventsOnDates", () => {
+  it("keeps events in the two-week window and drops ones before or after it", () => {
+    const events = [
+      eventStarting("yesterday", "2026-10-28T12:00:00-05:00"),
+      eventStarting("today", "2026-10-29T12:00:00-05:00"),
+      eventStarting("last-day", "2026-11-11T12:00:00-06:00"),
+      eventStarting("too-far", "2026-11-12T12:00:00-06:00"),
+    ];
+    const window = datesFrom("2026-10-29", 14);
+    expect(eventsOnDates(events, window).map((event) => event.id)).toEqual(["today", "last-day"]);
+  });
+});
+
+describe("pickDate", () => {
+  const dates = ["2026-10-29", "2026-10-30"];
+
+  it("uses the day in the page address when it's in range", () => {
+    expect(pickDate("2026-10-30", dates)).toBe("2026-10-30");
+  });
+
+  it("falls back to today for a missing, past, or made-up date", () => {
+    expect(pickDate(null, dates)).toBe("2026-10-29");
+    expect(pickDate("2026-10-01", dates)).toBe("2026-10-29");
+    expect(pickDate("<script>", dates)).toBe("2026-10-29");
+  });
+});
+
+describe("upcomingDates", () => {
+  it("lists the next days that have events, skipping today and empty days", () => {
+    const events = [
+      eventStarting("today", "2026-10-29T12:00:00-05:00"),
+      eventStarting("sat", "2026-10-31T12:00:00-05:00"),
+      eventStarting("sat-again", "2026-10-31T18:00:00-05:00"),
+      eventStarting("mon", "2026-11-02T12:00:00-06:00"),
+      eventStarting("thu", "2026-11-05T12:00:00-06:00"),
+      eventStarting("fri", "2026-11-06T12:00:00-06:00"),
+    ];
+    expect(upcomingDates(events, "2026-10-29", 3)).toEqual(["2026-10-31", "2026-11-02", "2026-11-05"]);
   });
 });

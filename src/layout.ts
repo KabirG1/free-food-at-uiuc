@@ -2,6 +2,7 @@
 
 const PAGES = [
   { label: "Today", key: "" },
+  { label: "Calendar", key: "calendar" },
   { label: "FAQ", key: "faq" },
   { label: "Contact", key: "contact" },
 ];

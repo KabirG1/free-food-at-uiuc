@@ -32,6 +32,9 @@ jobs:
       - run: npm test
       # Fails only if every source is down, which keeps the last published list instead of an empty one.
       - run: npm run fetch-events
+        env:
+          # The live copy holds today's events that have since ended and dropped out of the feed.
+          PREVIOUS_EVENTS_URL: https://kabirg1.github.io/free-food-at-uiuc/events.json
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

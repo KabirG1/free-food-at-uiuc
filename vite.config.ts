@@ -10,7 +10,12 @@ export default defineConfig({
   plugins: [tailwindcss()],
   build: {
     rollupOptions: {
-      input: { today: page("index.html"), faq: page("faq.html"), contact: page("contact.html") },
+      input: {
+        today: page("index.html"),
+        calendar: page("calendar.html"),
+        faq: page("faq.html"),
+        contact: page("contact.html"),
+      },
     },
   },
 });
