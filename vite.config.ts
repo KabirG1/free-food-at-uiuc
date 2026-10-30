@@ -15,6 +15,8 @@ export default defineConfig({
         calendar: page("calendar.html"),
         faq: page("faq.html"),
         contact: page("contact.html"),
+        account: page("account.html"),
+        privacy: page("privacy.html"),
       },
     },
   },

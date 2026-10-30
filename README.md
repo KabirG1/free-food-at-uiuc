@@ -14,6 +14,8 @@ Requires [Node.js](https://nodejs.org/) 20 or newer.
 npm install
 ```
 
+Sign-in is optional for running the site. To turn it on locally, copy `.env.example` to `.env.local` and fill in the Supabase project URL and publishable key (see **Accounts** below). Without them the site works and simply hides "Sign in".
+
 ## Commands
 
 | Command | What it does |
@@ -41,3 +43,11 @@ Deploys are automatic. The GitHub Actions workflow in `.github/workflows/deploy.
 - and on demand from the repository's **Actions** tab (**Fetch events and deploy → Run workflow**).
 
 GitHub Pages must be set to deploy from **GitHub Actions** (repository **Settings → Pages → Source**).
+
+## Accounts
+
+Sign-in uses [Supabase](https://supabase.com) with Google, limited to @illinois.edu accounts.
+
+- `supabase/001_accounts.sql` holds the database setup: the check that refuses non-Illinois emails (a "Before User Created" auth hook), account deletion, and a small `keep_awake` query. Run it in the Supabase SQL Editor, then choose `only_illinois_emails` under **Authentication → Auth Hooks → Before User Created**.
+- `src/auth.ts` talks to Supabase; `account.html` and `src/account.ts` are the Account page; `privacy.html` explains what is stored.
+- The deploy workflow reads the project URL and publishable key from repository variables `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` (**Settings → Secrets and variables → Actions → Variables**). Both are public by design. The Google client secret lives only in Supabase.

@@ -35,7 +35,19 @@ jobs:
         env:
           # The live copy holds today's events that have since ended and dropped out of the feed.
           PREVIOUS_EVENTS_URL: https://kabirg1.github.io/free-food-at-uiuc/events.json
+      # A free Supabase project pauses after a week with no activity; one tiny query per run keeps it awake.
+      # Skipped (without failing the deploy) until the Supabase settings are added to the repository.
+      - name: Keep Supabase awake
+        if: ${{ vars.SUPABASE_URL != '' }}
+        run: >
+          curl -fsS -X POST "${{ vars.SUPABASE_URL }}/rest/v1/rpc/keep_awake"
+          -H "apikey: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}" -H "Content-Type: application/json" -d '{}'
+          || echo "::warning::Couldn't reach Supabase"
       - run: npm run build
+        env:
+          # Public values, stored as repository variables (Settings, Secrets and variables, Actions, Variables).
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

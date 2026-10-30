@@ -1,4 +1,4 @@
-// The parts shared by every page: the menu in the header and the contact email links.
+// The parts shared by every page: the menu in the header, the sign-in link, the footer, and the contact email links.
 
 const PAGES = [
   { label: "Today", key: "" },
@@ -21,10 +21,15 @@ export interface NavItem {
   current: boolean;
 }
 
+/** The page key for `pathname`: "" for the home page, "faq" for ".../faq.html" or ".../faq". */
+function pageKey(pathname: string): string {
+  const fileName = pathname.slice(pathname.lastIndexOf("/") + 1).replace(/\.html$/, "");
+  return fileName === "index" ? "" : fileName;
+}
+
 /** The menu links, marking the one for the page at `pathname` (e.g. "/free-food-at-uiuc/faq.html"). */
 export function navItems(pathname: string): NavItem[] {
-  const fileName = pathname.slice(pathname.lastIndexOf("/") + 1).replace(/\.html$/, "");
-  const currentKey = fileName === "index" ? "" : fileName;
+  const currentKey = pageKey(pathname);
   return PAGES.map((page) => ({
     label: page.label,
     href: pageHref(page.key),
@@ -38,8 +43,8 @@ const FOOTER_HTML = `
     <p class="font-display text-lg font-bold text-on-brand">Free Food <span class="text-brand-accent">@ UIUC</span></p>
     <p class="mt-3">Missing an event, or found something wrong?</p>
     <p class="mt-1"><a data-contact-email class="font-semibold text-on-brand underline decoration-on-brand-muted underline-offset-3 hover:decoration-current" href="./contact.html">Contact us</a></p>
-    <nav aria-label="Footer" class="mt-6 flex gap-6 font-display text-sm font-semibold">
-      ${PAGES.map((page) => `<a class="py-2 hover:text-on-brand" href="${pageHref(page.key)}">${page.label}</a>`).join("")}
+    <nav aria-label="Footer" class="mt-6 flex flex-wrap gap-x-6 font-display text-sm font-semibold">
+      ${[...PAGES, { label: "Privacy", key: "privacy" }].map((page) => `<a class="py-2 hover:text-on-brand" href="${pageHref(page.key)}">${page.label}</a>`).join("")}
     </nav>
     <p class="mt-4 text-sm">A student project, not affiliated with the University of Illinois.</p>
   </div>`;
@@ -48,6 +53,9 @@ const FOOTER_HTML = `
 export function setUpPage(): void {
   const nav = document.querySelector<HTMLElement>("#site-nav");
   nav?.replaceChildren(...navItems(window.location.pathname).map(renderNavLink));
+  if (nav && import.meta.env.VITE_SUPABASE_URL) {
+    nav.append(renderAccountLink(pageKey(window.location.pathname) === "account"));
+  }
 
   const footer = document.querySelector<HTMLElement>("#site-footer");
   if (footer) {
@@ -59,6 +67,21 @@ export function setUpPage(): void {
     link.href = `mailto:${CONTACT_EMAIL}`;
     link.textContent = CONTACT_EMAIL;
   }
+}
+
+/** "Sign in" at the end of the menu, replaced by the student's first name once they're signed in. */
+function renderAccountLink(current: boolean): HTMLAnchorElement {
+  const link = renderNavLink({ label: "Sign in", href: pageHref("account"), current });
+  link.classList.add("ml-auto", "max-w-24", "truncate");
+  // Loaded after the page so sign-in never slows down the event list.
+  void import("./auth.ts").then(async ({ currentUser, firstName }) => {
+    const user = await currentUser();
+    if (user) {
+      link.textContent = firstName(user);
+      link.setAttribute("aria-label", "Your account");
+    }
+  });
+  return link;
 }
 
 function renderNavLink(item: NavItem): HTMLAnchorElement {
