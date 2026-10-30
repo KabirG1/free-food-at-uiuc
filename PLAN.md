@@ -8,16 +8,17 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 
 - **2026-10-29: First milestone.** `npm run fetch-events` pulls today's free-food events from OneIllinois and the page lists them (club, name, time, location, food), with empty and error messages. Kabir checked it in the browser with one real event (GSRC's Queer-O-Ween). 11 tests run against a saved sample feed, and there's a README.
 - **2026-10-29: Menu, FAQ, and Contact.** Header links (Today, FAQ, Contact) rather than a hidden hamburger menu, since three or four items fit on a phone. FAQ is a list of dropdowns (Kabir: "like most websites"). Every page has a footer with the contact email, the menu links, and a not-affiliated note. Kabir tried it. Calendar joins the menu when it is built.
+- **2026-10-29: Hide events that have ended.** The page hides events whose end time has passed, by the viewer's clock. Kabir checked it with Queer-O-Ween after it ended.
+- **2026-10-29: Calendar and a fuller Today page.** Calendar page with two rows of seven day buttons for the next 14 days, each with its event count; the chosen day is in the address (`?date=`), so it can be shared and the back button works. The fetch saves 14 days, and Today works out the date from the viewer's clock. Today also shows "Coming up" (the next 3 days with events) and a collapsed "Earlier today" list of ended events instead of a big "No free food today" message (Kabir's request). Kabir tried it.
+- **2026-10-29: Site renamed to "Free Food @ UIUC"** (Kabir's request) in page titles, headers, footer, and README.
 
 ## Next
 
-1. **Hide events that have already ended today (built 2026-10-29, Kabir still to check after an event ends).** The page hides events whose end time has passed, by the viewer's clock, and says "Today's free food is over" when all of today's have ended.
-2. **Run the fetch on a schedule and host the site (live 2026-10-29).** Live at https://kabirg1.github.io/free-food-at-uiuc/. Still to confirm: the next day's list appears on its own after the 7am run.
-3. **Make the site look good (in progress, waiting on Kabir to review).** Rebuilt after researching what makes sites look "vibe coded" (see Decisions): Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps.
-4. **Browse other days.** The Calendar menu item: pick a day and see its free-food events. Means saving the next ~2 weeks of events, not just today.
-5. **Filters:** meal vs. snacks; time of day, including a custom start and end time where an event shows if it overlaps the range by even one minute; open to everyone (hide private locations); club type.
-6. **Update the FAQ** with how the calendar and filters work.
-7. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
+1. **Run the fetch on a schedule and host the site (live 2026-10-29).** Live at https://kabirg1.github.io/free-food-at-uiuc/. Still to confirm: the next day's list appears on its own after the 7am run.
+2. **Make the site look good (in progress, waiting on Kabir to review).** Rebuilt after researching what makes sites look "vibe coded" (see Decisions): Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps.
+3. **Filters:** meal vs. snacks; time of day, including a custom start and end time where an event shows if it overlaps the range by even one minute; open to everyone (hide private locations); club type.
+4. **Update the FAQ** with how the calendar and filters work.
+5. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
 
 **Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
 - **Upload a flyer to add an event.** A student uploads a photo or screenshot of a flyer or post, it gets scanned for the club, time, place, and food, and the event is added to the list. Needs somewhere to store submissions and a small server-side step to do the scanning.
@@ -39,4 +40,5 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 
 ## Problems
 
-(none yet)
+- **2026-10-29: Today's events vanished once they ended.** OneIllinois removes events from its feed as soon as they end, so after the evening fetch the site had no record of today's earlier events. Fix: each fetch carries over today's ended events from the previous copy (the live site's `events.json` in GitHub Actions). Events that vanish before their end time are treated as cancelled and dropped.
+- **2026-10-29: A food drive showed up as free food.** "Pious Projects Feed the Hungry Food Drive" got through because its listing also mentioned lunch for volunteers. Fix: events whose title says food drive, food pantry, canned food, or donate food are skipped, with a test for this case.

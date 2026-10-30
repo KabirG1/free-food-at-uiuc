@@ -1,4 +1,4 @@
-# Free Food UIUC
+# Free Food @ UIUC
 
 A mobile-friendly web page that lists UIUC club events giving out free food, today and over the next two weeks. Events currently come from [OneIllinois](https://one.illinois.edu/events)' public feed.
 

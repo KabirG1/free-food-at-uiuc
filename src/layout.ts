@@ -35,7 +35,7 @@ export function navItems(pathname: string): NavItem[] {
 // The footer is the same on every page. It is fixed text, so building it from a string is safe.
 const FOOTER_HTML = `
   <div class="mx-auto max-w-content px-4 pt-8 pb-12">
-    <p class="font-display text-lg font-bold text-on-brand">Free Food <span class="text-brand-accent">UIUC</span></p>
+    <p class="font-display text-lg font-bold text-on-brand">Free Food <span class="text-brand-accent">@ UIUC</span></p>
     <p class="mt-3">Missing an event, or found something wrong?</p>
     <p class="mt-1"><a data-contact-email class="font-semibold text-on-brand underline decoration-on-brand-muted underline-offset-3 hover:decoration-current" href="./contact.html">Contact us</a></p>
     <nav aria-label="Footer" class="mt-6 flex gap-6 font-display text-sm font-semibold">
