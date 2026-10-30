@@ -11,7 +11,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 ## Next
 
 1. **Hide events that have already ended today (built 2026-10-29, Kabir still to check after an event ends).** The page hides events whose end time has passed, by the viewer's clock, and says "Today's free food is over" when all of today's have ended.
-2. Run the fetch on a schedule (GitHub Actions) and host the site from a link.
+2. **Run the fetch on a schedule and host the site (in progress).** Workflow written; waiting on Kabir to make the repo public and turn on Pages, then check the link on a phone.
 3. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
 
 **Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
@@ -26,6 +26,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-10-28: Free food = `foodProvided` flag or food words in the description.** The feed has a `foodProvided` field, but on this date only 24 of 3,174 upcoming events set it, and food words appear only about 40 times in the whole feed. Using both catches more; a second source will still be needed for the app to be useful most days.
 - **2026-10-28: Vite + TypeScript, with the fetch script in TypeScript run by Node.** One language for the page and the scraper, no server. Each source is its own module that returns the shared `FoodEvent` shape (`src/events.ts`), so Instagram or student submissions can be added later without changing the page. Submissions would need somewhere to store them (a Google Form or small free database) as an add-on.
 - **2026-10-28: Private GitHub repository** (`free-food-uiuc`), can be made public later.
+- **2026-10-29: Host on GitHub Pages, making the repo public.** GitHub Pages needs a public repo on the free plan, and Kabir was fine making it public; there are no secrets in it. A GitHub Actions job (`.github/workflows/deploy.yml`) fetches and redeploys four times a day and on every push. Alternative: keep it private and host on Cloudflare Pages or Netlify, which needs a second account and a deploy key.
 
 ## Problems
 

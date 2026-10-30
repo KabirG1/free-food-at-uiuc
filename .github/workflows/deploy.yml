@@ -1,0 +1,48 @@
+# Fetches today's free-food events and publishes the site to GitHub Pages.
+name: Fetch events and deploy
+
+on:
+  schedule:
+    # Times are UTC: 7am, 11am, 3pm, and 7pm in Champaign during daylight time (an hour earlier in winter).
+    - cron: "0 12,16,20,0 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two deploys at once; a newer run replaces a queued one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Fails only if every source is down, which keeps the last published list instead of an empty one.
+      - run: npm run fetch-events
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
