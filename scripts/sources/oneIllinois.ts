@@ -10,6 +10,7 @@ export const ONE_ILLINOIS_SOURCE = "OneIllinois";
 interface FeedItem {
   eventId?: string;
   group?: string;
+  eventType?: string;
   title?: string;
   fullDescription?: string;
   description?: string;
@@ -48,6 +49,7 @@ export function parseOneIllinoisFeed(xml: string): FoodEvent[] {
       start: item.eventStartDateTime,
       end: item.eventEndDateTime,
       location: item.eventLocation?.trim() || "Location not listed",
+      eventType: item.eventType?.trim() ?? "",
       foodMentions,
       url: safeHttpsUrl(item.eventLink || item.link),
     });

@@ -3,7 +3,7 @@ import type { FoodEvent } from "../src/events.ts";
 import { endedEventsToKeep } from "../scripts/previousEvents.ts";
 
 function event(id: string, start: string, end: string): FoodEvent {
-  return { id, source: "test", club: "Club", title: id, start, end, location: "Union", foodMentions: [], url: "https://one.illinois.edu/" };
+  return { id, source: "test", club: "Club", title: id, start, end, location: "Union", eventType: "", foodMentions: [], url: "https://one.illinois.edu/" };
 }
 
 describe("endedEventsToKeep", () => {

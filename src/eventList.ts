@@ -49,10 +49,15 @@ export function eventsStillOn(dayEvents: FoodEvent[], date: string, now: Date): 
 /**
  * The list for one day. On today's date that's "Happening now" and "Later today", plus a collapsed
  * "Earlier today" list of events that have ended. Days with nothing left get a one-line note.
+ * `filtered` says filters are on, so an empty day is explained as nothing matching rather than nothing listed.
  */
-export function renderDay(dayEvents: FoodEvent[], date: string, now: Date): HTMLElement[] {
+export function renderDay(dayEvents: FoodEvent[], date: string, now: Date, filtered = false): HTMLElement[] {
   const note = (text: string) => element("p", "mt-6 text-muted", text);
-  if (date !== campusDate(now)) {
+  const isToday = date === campusDate(now);
+  if (dayEvents.length === 0 && filtered) {
+    return [note(`No events ${isToday ? "today" : "on this day"} match your filters.`)];
+  }
+  if (!isToday) {
     return dayEvents.length > 0
       ? [renderSection(null, dayEvents)]
       : [note("No free food listed for this day. Clubs often post events only a few days ahead, so check back closer to the day.")];

@@ -6,6 +6,7 @@
 		<link>https://one.illinois.edu/events</link>
 		<item>
 			<eventId>500183</eventId>
+			<eventType>Student Affairs Department Event</eventType>
 			<group>Gender &amp; Sexuality Resource Center (GSRC)</group>
 			<title>Queer-O-Ween</title>
 			<description>Join us for Queer-O-Ween for tarot readings, crafts, a photo booth, costume contest and snacks. Our theme this year is Whimsical Witch. </description>
@@ -19,6 +20,7 @@
 		</item>
 		<item>
 			<eventId>900001</eventId>
+			<eventType>Social</eventType>
 			<group>Chess Club</group>
 			<title>Weekly Blitz Night</title>
 			<description>Bring a board if you have one.</description>
@@ -31,6 +33,7 @@
 		</item>
 		<item>
 			<eventId>900002</eventId>
+			<eventType>Meeting</eventType>
 			<group>Robotics Society</group>
 			<title>General Meeting</title>
 			<description>Project updates for the semester.</description>

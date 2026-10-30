@@ -11,6 +11,8 @@ export interface FoodEvent {
   /** ISO 8601 end time, with time zone offset. */
   end: string;
   location: string;
+  /** The kind of event as the source labels it, such as "Meeting" or "Cultural". Empty if not given. */
+  eventType: string;
   /** Food words found in the listing, such as "pizza". Empty if the event is only flagged as having food. */
   foodMentions: string[];
   url: string;

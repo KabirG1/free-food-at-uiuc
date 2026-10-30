@@ -3,7 +3,7 @@ import { campusDate, datesFrom, eventsNotEnded, eventsOnDate, eventsOnDates, pic
 import { findFoodMentions } from "../scripts/freeFood.ts";
 
 function eventStarting(id: string, start: string, end = start): FoodEvent {
-  return { id, source: "test", club: "Club", title: id, start, end, location: "Union", foodMentions: [], url: "" };
+  return { id, source: "test", club: "Club", title: id, start, end, location: "Union", eventType: "", foodMentions: [], url: "" };
 }
 
 describe("findFoodMentions", () => {

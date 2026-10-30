@@ -16,6 +16,7 @@ describe("parseOneIllinoisFeed", () => {
       start: "2026-10-29T19:00:00.0000000-05:00",
       end: "2026-10-29T21:00:00.0000000-05:00",
       location: "Private Location (sign in to display)",
+      eventType: "Student Affairs Department Event",
       foodMentions: ["snacks"],
       url: "https://one.illinois.edu/GSRC/rsvp?id=500183",
     });

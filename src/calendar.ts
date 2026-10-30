@@ -2,6 +2,8 @@
 
 import { CAMPUS_TIME_ZONE, DAYS_AHEAD, campusDate, datesFrom, eventsOnDate, pickDate, type EventsFile } from "./events.ts";
 import { element, eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
+import { renderFilterPanel } from "./filterPanel.ts";
+import { activeFilterCount, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
 import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
@@ -10,6 +12,9 @@ const updated = document.querySelector<HTMLElement>("#updated")!;
 const weekdayFormat = new Intl.DateTimeFormat("en-US", { timeZone: CAMPUS_TIME_ZONE, weekday: "short" });
 
 let data: EventsFile | null = null;
+let filters: Filters = NO_FILTERS;
+// The list below the filter panel; redrawn when the day or the filters change, while the panel stays put.
+const results = element("div", "", "");
 
 async function start(): Promise<void> {
   data = await loadEventsFile();
@@ -18,6 +23,11 @@ async function start(): Promise<void> {
     return;
   }
   updated.textContent = lastCheckedText(data);
+  const panel = renderFilterPanel(eventTypesIn(data.events), (newFilters) => {
+    filters = newFilters;
+    showSelectedDay();
+  });
+  content.replaceChildren(panel, results);
   showSelectedDay();
   window.addEventListener("popstate", showSelectedDay);
 }
@@ -29,18 +39,18 @@ function showSelectedDay(): void {
   const now = new Date();
   const dates = datesFrom(campusDate(now), DAYS_AHEAD);
   const selected = pickDate(new URLSearchParams(window.location.search).get("date"), dates);
-  const events = data.events;
+  const events = data.events.filter((event) => matchesFilters(event, filters));
 
   const picker = element("nav", "mt-6 grid grid-cols-7 gap-1", "");
   picker.setAttribute("aria-label", "Choose a day");
   picker.append(...dates.map((date) => renderDayButton(date, eventsStillOn(eventsOnDate(events, date), date, now).length, date === selected)));
 
   const heading = element("h1", "mt-8 font-display text-xl leading-tight font-bold", formatDay(selected));
-  content.replaceChildren(
+  results.replaceChildren(
     picker,
     ...renderSourceWarning(data.failedSources),
     heading,
-    ...renderDay(eventsOnDate(events, selected), selected, now),
+    ...renderDay(eventsOnDate(events, selected), selected, now, activeFilterCount(filters) > 0),
   );
 }
 

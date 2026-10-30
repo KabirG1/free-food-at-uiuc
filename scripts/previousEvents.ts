@@ -22,7 +22,10 @@ export async function loadPreviousEvents(localPath: string): Promise<FoodEvent[]
       text = await readFile(localPath, "utf8");
     }
     const file = JSON.parse(text) as Partial<EventsFile>;
-    return Array.isArray(file.events) ? file.events.filter(isFoodEvent) : [];
+    // Files saved before event types were added have no eventType; treat it as unknown.
+    return Array.isArray(file.events)
+      ? file.events.filter(isFoodEvent).map((event) => ({ ...event, eventType: event.eventType ?? "" }))
+      : [];
   } catch (error) {
     console.log("No previous events to carry over:", error instanceof Error ? error.message : error);
     return [];
@@ -54,6 +57,7 @@ function isFoodEvent(value: unknown): value is FoodEvent {
     !Number.isNaN(Date.parse(event.start as string)) &&
     !Number.isNaN(Date.parse(event.end as string)) &&
     (event.url as string).startsWith("https://") &&
+    (event.eventType === undefined || typeof event.eventType === "string") &&
     Array.isArray(event.foodMentions) &&
     event.foodMentions.every((word) => typeof word === "string")
   );
