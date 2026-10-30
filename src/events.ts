@@ -81,3 +81,27 @@ export function upcomingDates(events: FoodEvent[], today: string, limit: number)
   // YYYY-MM-DD strings sort in date order.
   return [...dates].filter((date) => date > today).sort().slice(0, limit);
 }
+
+export interface SavedEventToShow {
+  event: FoodEvent;
+  /** The event is gone from the latest list before it ended, so it may have been cancelled. */
+  notListed: boolean;
+}
+
+/**
+ * The saved events worth showing, earliest first. Uses the latest copy from `data` when the event is still
+ * listed there (times and places can change), and leaves out events that have ended by `now`.
+ * `data` is null when the saved list couldn't be loaded; the saved copies are shown as they are.
+ */
+export function savedEventsToShow(saved: FoodEvent[], data: EventsFile | null, now: Date): SavedEventToShow[] {
+  const listed = new Map(data?.events.map((event) => [event.id, event]));
+  const coveredDates = new Set(data ? datesFrom(data.date, DAYS_AHEAD) : []);
+  return saved
+    .map((savedCopy) => {
+      const latest = listed.get(savedCopy.id);
+      const notListed = latest === undefined && coveredDates.has(campusDate(new Date(savedCopy.start)));
+      return { event: latest ?? savedCopy, notListed };
+    })
+    .filter(({ event }) => Date.parse(event.end) > now.getTime())
+    .sort((a, b) => Date.parse(a.event.start) - Date.parse(b.event.start));
+}

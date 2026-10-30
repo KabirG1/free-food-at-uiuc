@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { campusDate, datesFrom, eventsNotEnded, eventsOnDate, eventsOnDates, pickDate, splitByStarted, upcomingDates, type FoodEvent } from "../src/events.ts";
+import {
+  campusDate,
+  datesFrom,
+  eventsNotEnded,
+  eventsOnDate,
+  eventsOnDates,
+  pickDate,
+  savedEventsToShow,
+  splitByStarted,
+  upcomingDates,
+  type EventsFile,
+  type FoodEvent,
+} from "../src/events.ts";
 import { findFoodMentions } from "../scripts/freeFood.ts";
 
 function eventStarting(id: string, start: string, end = start): FoodEvent {
@@ -116,5 +128,37 @@ describe("upcomingDates", () => {
       eventStarting("fri", "2026-11-06T12:00:00-06:00"),
     ];
     expect(upcomingDates(events, "2026-10-29", 3)).toEqual(["2026-10-31", "2026-11-02", "2026-11-05"]);
+  });
+});
+
+describe("savedEventsToShow", () => {
+  const now = new Date("2026-10-30T13:00:00-05:00");
+  const listing = (events: FoodEvent[]): EventsFile => ({ date: "2026-10-30", generatedAt: "", events, failedSources: [] });
+
+  it("hides saved events that have ended and lists the rest earliest first", () => {
+    const saved = [
+      eventStarting("tomorrow", "2026-10-31T12:00:00-05:00", "2026-10-31T13:00:00-05:00"),
+      eventStarting("this morning", "2026-10-30T09:00:00-05:00", "2026-10-30T10:00:00-05:00"),
+      eventStarting("this afternoon", "2026-10-30T15:00:00-05:00", "2026-10-30T16:00:00-05:00"),
+    ];
+    const shown = savedEventsToShow(saved, listing(saved), now);
+    expect(shown.map(({ event }) => event.id)).toEqual(["this afternoon", "tomorrow"]);
+  });
+
+  it("shows the latest listing when the club changed the event after it was saved", () => {
+    const savedCopy = eventStarting("moved", "2026-10-31T12:00:00-05:00", "2026-10-31T13:00:00-05:00");
+    const latest = { ...savedCopy, location: "Siebel Center" };
+    expect(savedEventsToShow([savedCopy], listing([latest]), now)[0].event.location).toBe("Siebel Center");
+  });
+
+  it("flags an event that vanished from the list before it ended, since it may be cancelled", () => {
+    const saved = [eventStarting("gone", "2026-10-31T12:00:00-05:00", "2026-10-31T13:00:00-05:00")];
+    expect(savedEventsToShow(saved, listing([]), now)[0].notListed).toBe(true);
+  });
+
+  it("doesn't flag events beyond the two weeks the list covers, or when the list couldn't load", () => {
+    const farOff = [eventStarting("far off", "2026-12-01T12:00:00-06:00", "2026-12-01T13:00:00-06:00")];
+    expect(savedEventsToShow(farOff, listing([]), now)[0].notListed).toBe(false);
+    expect(savedEventsToShow(farOff, null, now)[0].notListed).toBe(false);
   });
 });

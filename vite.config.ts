@@ -16,6 +16,7 @@ export default defineConfig({
         faq: page("faq.html"),
         contact: page("contact.html"),
         account: page("account.html"),
+        saved: page("saved.html"),
         privacy: page("privacy.html"),
       },
     },

@@ -1,8 +1,8 @@
-// The Account page: sign in with an Illinois Google account, sign out, or delete the account.
+// The Account page: sign in with an Illinois Google account, or, once signed in, the account settings.
 
 import type { User } from "@supabase/supabase-js";
 import { currentUser, deleteMyAccount, fullName, renderGoogleButton, signOut, supabase } from "./auth.ts";
-import { element } from "./eventList.ts";
+import { element } from "./dom.ts";
 import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
@@ -43,7 +43,7 @@ function signedOut(): HTMLElement[] {
   return [
     heading("Sign in"),
     paragraph("Sign in with your @illinois.edu Google account. Other Google accounts can't sign in."),
-    paragraph("Accounts are optional: everything on the site works without one. Saving events, following clubs, and submitting events are coming next."),
+    paragraph("Accounts are optional: everything on the site works without one. Signing in lets you save events and see them on any device. Following clubs and submitting events are coming next."),
     buttonBox,
     status,
     privacyNote(),
@@ -64,13 +64,13 @@ function signedIn(user: User): HTMLElement[] {
   const deleteStatus = element("p", "mt-3 text-error", "");
   deleteStatus.setAttribute("role", "status");
   deleteButton.addEventListener("click", async () => {
-    if (!window.confirm("Delete your account? Your name and email will be removed. This can't be undone.")) {
+    if (!window.confirm("Delete your account? Your name, email, and saved events will be removed. This can't be undone.")) {
       return;
     }
     deleteButton.disabled = true;
     try {
       await deleteMyAccount();
-      content.replaceChildren(heading("Your account was deleted"), paragraph("Your name and email have been removed."));
+      content.replaceChildren(heading("Your account was deleted"), paragraph("Your name, email, and saved events have been removed."));
     } catch {
       deleteButton.disabled = false;
       deleteStatus.textContent = "Couldn't delete your account. Check your connection and try again.";
@@ -78,12 +78,12 @@ function signedIn(user: User): HTMLElement[] {
   });
 
   return [
-    heading("Your account"),
+    heading("Account settings"),
     element("p", "mt-4 text-lg font-semibold", fullName(user)),
     element("p", "text-muted", user.email ?? ""),
     signOutButton,
     element("h2", "mt-10 font-display text-lg font-bold", "Delete account"),
-    paragraph("Removes your name and email from the site for good."),
+    paragraph("Removes your name, email, and saved events from the site for good."),
     deleteButton,
     deleteStatus,
     privacyNote(),
@@ -107,7 +107,7 @@ function paragraph(text: string): HTMLElement {
 }
 
 function privacyNote(): HTMLElement {
-  const note = element("p", "mt-10 text-sm text-muted", "We store only your name and email. ");
+  const note = element("p", "mt-10 text-sm text-muted", "We store only your name, email, and the events you save. ");
   const link = element("a", "underline decoration-line underline-offset-3 hover:decoration-current", "Privacy");
   link.href = "./privacy.html";
   note.append(link);

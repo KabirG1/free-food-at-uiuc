@@ -1,5 +1,6 @@
 // Loading the saved events and showing a day's list. Shared by the Today and Calendar pages.
 
+import { element } from "./dom.ts";
 import {
   CAMPUS_TIME_ZONE,
   campusDate,
@@ -11,6 +12,7 @@ import {
   type FoodEvent,
 } from "./events.ts";
 import { isPrivateLocation, mapLink } from "./location.ts";
+import { renderSaveButton, savingAvailable } from "./saveButton.ts";
 
 export const timeFormat = new Intl.DateTimeFormat("en-US", { timeZone: CAMPUS_TIME_ZONE, hour: "numeric", minute: "2-digit" });
 const dayFormat = new Intl.DateTimeFormat("en-US", {
@@ -102,7 +104,7 @@ function renderEarlierToday(ended: FoodEvent[]): HTMLElement {
   const chevron = element("span", "chevron shrink-0 text-muted", "");
   chevron.setAttribute("aria-hidden", "true");
   summary.append(sectionHeading(`Earlier today · ${ended.length} ${ended.length === 1 ? "event" : "events"}`, "span"), chevron);
-  dropdown.append(summary, eventList(ended, "mt-2", true));
+  dropdown.append(summary, eventList(ended, "mt-2", { ended: true }));
   return dropdown;
 }
 
@@ -140,14 +142,22 @@ function sectionHeading(text: string, tag: "h2" | "span" = "h2"): HTMLElement {
   return element(tag, "font-display text-sm font-bold tracking-wide text-muted uppercase", text);
 }
 
-function eventList(events: FoodEvent[], spacing: string, ended = false): HTMLUListElement {
+interface ListOptions {
+  /** The events are over: say "ended" instead of "to", and leave off the save star. */
+  ended?: boolean;
+  /** Events to mark as no longer listed, since they may be cancelled. */
+  notListed?: Set<string>;
+}
+
+export function eventList(events: FoodEvent[], spacing: string, options: ListOptions = {}): HTMLUListElement {
   const list = element("ul", `${spacing} divide-y divide-line border-y border-line`, "");
-  list.append(...events.map((event) => renderEvent(event, ended)));
+  list.append(...events.map((event) => renderEvent(event, options)));
   return list;
 }
 
-function renderEvent(event: FoodEvent, ended: boolean): HTMLLIElement {
-  const item = element("li", "grid grid-cols-[6rem_1fr] gap-x-4 py-4", "");
+function renderEvent(event: FoodEvent, { ended = false, notListed }: ListOptions): HTMLLIElement {
+  const showStar = savingAvailable && !ended;
+  const item = element("li", `grid ${showStar ? "grid-cols-[6rem_1fr_auto]" : "grid-cols-[6rem_1fr]"} gap-x-4 py-4`, "");
 
   const when = element("div", "", "");
   when.append(
@@ -166,8 +176,14 @@ function renderEvent(event: FoodEvent, ended: boolean): HTMLLIElement {
     renderLocation(event.location),
     element("p", "mt-2 font-semibold text-food", describeFood(event)),
   );
+  if (notListed?.has(event.id)) {
+    details.append(element("p", "mt-1 text-sm text-error", "No longer listed on OneIllinois, so it may be cancelled."));
+  }
 
   item.append(when, details);
+  if (showStar) {
+    item.append(renderSaveButton(event));
+  }
   return item;
 }
 
@@ -196,11 +212,4 @@ function describeFood(event: FoodEvent): string {
   }
   const list = event.foodMentions.join(", ");
   return list.charAt(0).toUpperCase() + list.slice(1);
-}
-
-export function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text: string): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  node.className = className;
-  node.textContent = text;
-  return node;
 }

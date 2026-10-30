@@ -1,7 +1,8 @@
 // The Calendar page: pick one of the next two weeks and see that day's free-food events.
 
+import { element } from "./dom.ts";
 import { CAMPUS_TIME_ZONE, DAYS_AHEAD, campusDate, datesFrom, eventsOnDate, pickDate, type EventsFile } from "./events.ts";
-import { element, eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
+import { eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
 import { renderFilterPanel } from "./filterPanel.ts";
 import { activeFilterCount, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
 import { setUpPage } from "./layout.ts";

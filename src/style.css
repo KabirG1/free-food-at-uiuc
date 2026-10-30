@@ -30,6 +30,9 @@
   --spacing: 4px;
   --radius-sm: 4px;
   --container-content: 40rem;
+
+  /* Phones get the "Menu" button; at 40rem (640px) and wider the menu links show in a row. */
+  --breakpoint-sm: 40rem;
 }
 
 /* Colors switch with the system's dark mode. Contrast ratios are against the page background. */
@@ -111,7 +114,8 @@
     flex-grow: 1;
   }
 
-  a:focus-visible {
+  a:focus-visible,
+  button:focus-visible {
     outline: 2px solid var(--color-food);
     outline-offset: 2px;
     border-radius: var(--radius-sm);

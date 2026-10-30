@@ -1,8 +1,8 @@
 // The Today page: today's free-food events, grouped into happening now and later today, then the next few days.
 
+import { element } from "./dom.ts";
 import { campusDate, eventsOnDate, type EventsFile } from "./events.ts";
 import {
-  element,
   eventsStillOn,
   formatDay,
   lastCheckedText,
