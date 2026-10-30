@@ -15,12 +15,12 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-10-30: Accounts, phase A.** "Sign in" in the menu (shows the first name once signed in), an Account page with Google sign-in, sign out, and "Delete my account", and a Privacy page. Supabase refuses non-@illinois.edu accounts with a "Before User Created" hook (`supabase/001_accounts.sql`). The deploy workflow pings a `keep_awake` query so the free project isn't paused. Kabir tested: Illinois account signs in, Gmail is refused, sign out and delete work. Google's app is still in Testing mode, so only listed test users can sign in on the live site.
 - **2026-10-30: Google's screen names our site, not Supabase (A2, first half).** The Account page now uses Google's own sign-in button and passes Google's ID token to Supabase (`signInWithIdToken`), so Google's screen shows the site's address instead of "zczx...supabase.co". The @illinois.edu check is unchanged (still in the database). Kabir tried it locally: the screen showed localhost, the Illinois account signed in, and Gmail was refused.
 - **2026-10-30: Sign-in published to all Illinois students (A2 done).** Kabir filled in Google's Branding page (name, home page, privacy link, no logo so no review is needed) and published the app to production on the Audience page. A friend whose Illinois account was not a test user signed in on the live site. A custom domain (about $10-15 a year) remains the later option for the best-looking name on Google's screen.
+- **2026-10-30: The site updates itself.** Live at https://kabirg1.github.io/free-food-at-uiuc/. Kabir confirmed the next day's list appeared on its own after the 7am scheduled run.
 
 ## Next
 
-1. **Run the fetch on a schedule and host the site (live 2026-10-29).** Live at https://kabirg1.github.io/free-food-at-uiuc/. Still to confirm: the next day's list appears on its own after the 7am run.
-2. **Make the site look good (in progress, waiting on Kabir to review).** Rebuilt after researching what makes sites look "vibe coded" (see Decisions): Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps.
-3. **Accounts and sign-in, in phases** (see Decisions, 2026-10-29). Each phase is tried by Kabir before the next starts.
+1. **Make the site look good (in progress, waiting on Kabir to review).** Rebuilt after researching what makes sites look "vibe coded" (see Decisions): Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps.
+2. **Accounts and sign-in, in phases** (see Decisions, 2026-10-29). Each phase is tried by Kabir before the next starts.
    - **B. Save events.** Star an event; "My events" shows it on any device. Finish line: star on laptop, see it on phone.
    - **C. Follow clubs and preferences.** Follow clubs; remember filter choices.
    - **D. Submit events.** A form, then flyer upload read by AI. Submissions wait for Kabir's approval before appearing. This is the second source.
