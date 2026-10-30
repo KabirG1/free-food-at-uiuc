@@ -53,7 +53,8 @@ Keep entries short and dated. Do not invent progress or reasons Kabir did not gi
 <!-- Update this section after discussing with Kabir. It persists across sessions. -->
 
 - **Collaboration style:** Explained (you write the code and explain what you are doing and why as you go)
-- **Standing corrections:** (none yet)
+- **Standing corrections:**
+  - Write commit messages with the `commit-messages` skill (Conventional Commits: `type(scope): description`, with a body explaining why). Don't ask Kabir to approve the message; commit once they've tried the feature. (2026-10-30)
 
 ## Working Together
 
