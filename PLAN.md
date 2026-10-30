@@ -18,10 +18,15 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 2. **Make the site look good (in progress, waiting on Kabir to review).** Rebuilt after researching what makes sites look "vibe coded" (see Decisions): Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps.
 3. **Filters:** meal vs. snacks; time of day, including a custom start and end time where an event shows if it overlaps the range by even one minute; open to everyone (hide private locations); club type.
 4. **Update the FAQ** with how the calendar and filters work.
-5. Choose and add a second source (Instagram, student submissions, or calendars.illinois.edu).
+5. **Accounts and sign-in, in phases** (see Decisions, 2026-10-29). Each phase is tried by Kabir before the next starts.
+   - **A. Accounts.** "Sign in with Google", only @illinois.edu accounts, enforced by the database. Name in the header, sign out, "Delete my account", and a short privacy page. Finish line: Kabir signs in with an Illinois account and sees their name; a personal Gmail is refused; sign out and delete work. Kabir creates a free Supabase account and a Google sign-in setup in Google Cloud, with guidance.
+   - **B. Save events.** Star an event; "My events" shows it on any device. Finish line: star on laptop, see it on phone.
+   - **C. Follow clubs and preferences.** Follow clubs; remember filter choices.
+   - **D. Submit events.** A form, then flyer upload read by AI. Submissions wait for Kabir's approval before appearing. This is the second source.
+   - **E. Notifications.** Emails about food from followed clubs or soon nearby (needs an email service, e.g. Resend's free tier).
 
 **Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
-- **Upload a flyer to add an event.** A student uploads a photo or screenshot of a flyer or post, it gets scanned for the club, time, place, and food, and the event is added to the list. Needs somewhere to store submissions and a small server-side step to do the scanning.
+- **Upload a flyer to add an event.** Now part of accounts phase D.
 - **GroupMe.** Read messages from club GroupMe chats to find food announcements. GroupMe has an official API, but it only sees chats the connected account is a member of, so it needs a decision on whose account and members' consent.
 
 ## Decisions
@@ -37,6 +42,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-10-29: Commits use GitHub's private noreply email** for this repo, since the repo is public. Earlier commits still show Kabir's Gmail; removing it would mean rewriting history.
 
 - **2026-10-29: Contact us is an email link to kabirgan21@gmail.com.** Kabir chose a plain email link. The address is public on the site, so the page builds it in JavaScript rather than writing it into the HTML, which keeps most spam bots that scan pages from collecting it. Alternatives: a Google Form (keeps the email private) or GitHub issues (needs a GitHub account).
+- **2026-10-29: Accounts with Supabase, Illinois emails only, sign-in optional.** Kabir wants signed-in students to save events, submit events, get notifications, and follow clubs or save preferences. The site has no server, so a hosted service holds accounts and data. Supabase was chosen: its free tier covers sign-in, a database, file storage (flyers), and server functions (flyer scanning, notifications) with no credit card. Its free projects pause after a week idle, so the scheduled fetch will touch the database each run. Firebase was the alternative, but it now needs a billing account for server functions and file storage. Sign-in is "Sign in with Google" limited to @illinois.edu (real NetID login isn't available to unofficial projects); the limit is enforced in the database, since a check only in the page could be bypassed. Browsing stays open to everyone. Only email and name are stored, with a privacy page and account deletion. Submitted events wait for Kabir's approval before appearing, so fake "free food" posts can't go up. Order: filters first (everyone benefits, no account needed), then accounts phases A to E.
 
 ## Problems
 
