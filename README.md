@@ -2,6 +2,10 @@
 
 A mobile-friendly web page that lists UIUC club events giving out free food today. Events currently come from [OneIllinois](https://one.illinois.edu/events)' public feed.
 
+**Open the site: https://kabirg1.github.io/free-food-at-uiuc/**
+
+Each event shows the club, event name, time, location, and the food mentioned. Events disappear from the list once they end.
+
 ## Setup
 
 Requires [Node.js](https://nodejs.org/) 20 or newer.
@@ -28,4 +32,10 @@ npm install
 
 ## Deploying
 
-Not set up yet. The plan is a scheduled GitHub Actions job that runs `fetch-events` a few times a day and publishes the built site.
+Deploys are automatic. The GitHub Actions workflow in `.github/workflows/deploy.yml` runs the tests, fetches events, builds the site, and publishes it to GitHub Pages:
+
+- four times a day (7am, 11am, 3pm, and 7pm Champaign time in daylight time; an hour earlier in winter),
+- on every push to `main`,
+- and on demand from the repository's **Actions** tab (**Fetch events and deploy → Run workflow**).
+
+GitHub Pages must be set to deploy from **GitHub Actions** (repository **Settings → Pages → Source**).

@@ -17,3 +17,7 @@ public/events.json
 *.log
 .DS_Store
 Thumbs.db
+
+# Claude Code's local settings and personal notes
+.claude/
+CLAUDE.local.md
