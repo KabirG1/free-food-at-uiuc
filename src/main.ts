@@ -1,5 +1,6 @@
 import { CAMPUS_TIME_ZONE, eventsNotEnded, splitByStarted, type EventsFile, type FoodEvent } from "./events.ts";
 import { isPrivateLocation, mapLink } from "./location.ts";
+import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 const subtitle = document.querySelector<HTMLElement>("#subtitle")!;
@@ -141,4 +142,5 @@ function showMessage(heading: string, detail: string, kind: "empty" | "error"): 
   content.replaceChildren(block);
 }
 
+setUpPage();
 void loadEvents();

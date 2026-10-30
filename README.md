@@ -29,6 +29,7 @@ npm install
 - `scripts/sources/` has one module per data source. Each returns events in the shared `FoodEvent` shape from `src/events.ts`.
 - `scripts/fetch-events.ts` runs every source, keeps events starting today in Champaign's time zone, and saves them. If a source fails, the others still show and the page says which one was unreachable.
 - `src/main.ts` loads `events.json` and shows the list, or a "No free food today" message. `src/location.ts` turns locations into map links.
+- `faq.html` and `contact.html` are static pages. `src/layout.ts` fills in the header menu, the shared footer, and the contact email links on every page.
 - `src/style.css` holds the design system: Tailwind CSS with its default colors, sizes, and fonts removed, so only the Illinois colors, fonts, and spacing defined there can be used.
 
 ## Deploying
