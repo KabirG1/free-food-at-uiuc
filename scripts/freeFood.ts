@@ -20,6 +20,9 @@ const FOOD_WORDS = [
 // Phrases where food is collected or discussed rather than handed out.
 const NOT_GIVEAWAYS = ["food drive", "food pantry", "food insecurity", "canned food", "donate food"];
 
+// Events built around collecting food; they're left out even if the listing also mentions a meal for volunteers.
+const FOOD_COLLECTION_TITLE = /food drive|food pantry|canned food|donate food/i;
+
 const foodWordPattern = new RegExp(`\\b(${FOOD_WORDS.join("|")})\\b`, "gi");
 
 /** Returns the distinct food words in `text`, lowercased, in the order they first appear. */
@@ -30,4 +33,9 @@ export function findFoodMentions(text: string): string[] {
   }
   const matches = cleaned.match(foodWordPattern) ?? [];
   return [...new Set(matches)];
+}
+
+/** True when the event's title says it collects food rather than gives it out, such as a food drive. */
+export function isFoodCollection(title: string): boolean {
+  return FOOD_COLLECTION_TITLE.test(title);
 }

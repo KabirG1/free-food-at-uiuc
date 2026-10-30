@@ -2,7 +2,7 @@
 
 import { XMLParser } from "fast-xml-parser";
 import type { FoodEvent } from "../../src/events.ts";
-import { findFoodMentions } from "../freeFood.ts";
+import { findFoodMentions, isFoodCollection } from "../freeFood.ts";
 
 export const ONE_ILLINOIS_FEED_URL = "https://one.illinois.edu/rss_events";
 export const ONE_ILLINOIS_SOURCE = "OneIllinois";
@@ -32,7 +32,7 @@ export function parseOneIllinoisFeed(xml: string): FoodEvent[] {
 
   const events: FoodEvent[] = [];
   for (const item of items) {
-    if (!item.eventId || !item.title || !item.eventStartDateTime || !item.eventEndDateTime) {
+    if (!item.eventId || !item.title || !item.eventStartDateTime || !item.eventEndDateTime || isFoodCollection(item.title)) {
       continue;
     }
     const description = stripHtml(item.fullDescription || item.description || "");

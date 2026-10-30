@@ -44,6 +44,16 @@ describe("parseOneIllinoisFeed", () => {
     expect(events).toHaveLength(3);
   });
 
+  it("leaves out a food drive even when its listing mentions lunch for volunteers", () => {
+    const xml = `<rss><channel><item>
+      <eventId>9</eventId><title>Feed the Hungry Food Drive - Meal Packing &amp; Distribution</title>
+      <description>Help pack meals. Lunch provided for volunteers.</description>
+      <eventStartDateTime>2026-11-08T10:00:00-06:00</eventStartDateTime>
+      <eventEndDateTime>2026-11-08T14:00:00-06:00</eventEndDateTime>
+    </item></channel></rss>`;
+    expect(parseOneIllinoisFeed(xml)).toEqual([]);
+  });
+
   it("returns no events for an empty feed", () => {
     expect(parseOneIllinoisFeed("<rss><channel></channel></rss>")).toEqual([]);
   });
