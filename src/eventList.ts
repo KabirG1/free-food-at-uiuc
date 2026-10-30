@@ -84,12 +84,13 @@ export function renderComingUp(events: FoodEvent[], today: string): HTMLElement[
   if (dates.length === 0) {
     return [];
   }
-  const section = element("section", "mt-10", "");
+  // Beside today's list on wide screens, so it lines up with that list's first heading.
+  const section = element("section", "mt-10 lg:mt-8", "");
   section.append(sectionHeading("Coming up"));
   for (const date of dates) {
     section.append(element("h3", "mt-5 font-display font-bold", formatDay(date)), eventList(eventsOnDate(events, date), "mt-2"));
   }
-  const calendarLink = element("a", `font-semibold ${LINK_CLASSES}`, "See the next two weeks on the calendar");
+  const calendarLink = element("a", `font-semibold ${LINK_CLASSES}`, "See more days on the calendar");
   calendarLink.href = "./calendar.html";
   const linkLine = element("p", "mt-5", "");
   linkLine.append(calendarLink);

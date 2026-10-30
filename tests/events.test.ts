@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   campusDate,
+  coveredDates,
   datesFrom,
+  datesInMonth,
   eventsNotEnded,
   eventsOnDate,
   eventsOnDates,
@@ -90,6 +92,26 @@ describe("datesFrom", () => {
   });
 });
 
+describe("datesInMonth", () => {
+  it("lists every day of the month, including February 29 in a leap year", () => {
+    expect(datesInMonth("2026-11")).toHaveLength(30);
+    expect(datesInMonth("2028-02").at(-1)).toBe("2028-02-29");
+  });
+});
+
+describe("coveredDates", () => {
+  it("runs from today through the last day of next month", () => {
+    const dates = coveredDates("2026-10-30");
+    expect(dates[0]).toBe("2026-10-30");
+    expect(dates.at(-1)).toBe("2026-11-30");
+    expect(dates).toHaveLength(32);
+  });
+
+  it("carries over into January in December", () => {
+    expect(coveredDates("2026-12-15").at(-1)).toBe("2027-01-31");
+  });
+});
+
 describe("eventsOnDates", () => {
   it("keeps events in the two-week window and drops ones before or after it", () => {
     const events = [
@@ -156,7 +178,7 @@ describe("savedEventsToShow", () => {
     expect(savedEventsToShow(saved, listing([]), now)[0].notListed).toBe(true);
   });
 
-  it("doesn't flag events beyond the two weeks the list covers, or when the list couldn't load", () => {
+  it("doesn't flag events after the end of next month, which the list doesn't cover, or when the list couldn't load", () => {
     const farOff = [eventStarting("far off", "2026-12-01T12:00:00-06:00", "2026-12-01T13:00:00-06:00")];
     expect(savedEventsToShow(farOff, listing([]), now)[0].notListed).toBe(false);
     expect(savedEventsToShow(farOff, null, now)[0].notListed).toBe(false);

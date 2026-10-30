@@ -29,10 +29,14 @@
   /* Spacing steps of 4px: p-4 is 16px. */
   --spacing: 4px;
   --radius-sm: 4px;
-  --container-content: 40rem;
+  /* The header, footer, and page fill up to 72rem; text-heavy pages keep lines at a readable 40rem. */
+  --container-page: 72rem;
+  --container-prose: 40rem;
 
   /* Phones get the "Menu" button; at 40rem (640px) and wider the menu links show in a row. */
   --breakpoint-sm: 40rem;
+  /* At 64rem (1024px) and wider, Today and Calendar split into two columns. */
+  --breakpoint-lg: 64rem;
 }
 
 /* Colors switch with the system's dark mode. Contrast ratios are against the page background. */

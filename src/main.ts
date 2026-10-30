@@ -43,11 +43,12 @@ async function showToday(): Promise<void> {
 
 function renderResults(results: HTMLElement, data: EventsFile, filters: Filters, today: string, now: Date): void {
   const events = data.events.filter((event) => matchesFilters(event, filters));
-  results.replaceChildren(
-    ...renderSourceWarning(data.failedSources),
-    ...renderDay(eventsOnDate(events, today), today, now, activeFilterCount(filters) > 0),
-    ...renderComingUp(events, today),
-  );
+  // On wide screens today's list and "Coming up" sit side by side; on phones they stack.
+  const todayColumn = element("div", "", "");
+  todayColumn.append(...renderDay(eventsOnDate(events, today), today, now, activeFilterCount(filters) > 0));
+  const columns = element("div", "lg:grid lg:grid-cols-2 lg:items-start lg:gap-12", "");
+  columns.append(todayColumn, ...renderComingUp(events, today));
+  results.replaceChildren(...renderSourceWarning(data.failedSources), columns);
 }
 
 setUpPage();

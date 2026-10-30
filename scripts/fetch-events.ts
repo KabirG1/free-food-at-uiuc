@@ -1,7 +1,7 @@
-// Fetches every source, keeps the next two weeks of free-food events, and writes them to public/events.json for the page.
+// Fetches every source, keeps free-food events from today through the end of next month, and writes them to public/events.json for the page.
 
 import { mkdir, writeFile } from "node:fs/promises";
-import { campusDate, DAYS_AHEAD, datesFrom, eventsOnDates, type EventsFile, type FoodEvent } from "../src/events.ts";
+import { campusDate, coveredDates, eventsOnDates, type EventsFile, type FoodEvent } from "../src/events.ts";
 import { endedEventsToKeep, loadPreviousEvents } from "./previousEvents.ts";
 import { fetchOneIllinoisFeed, ONE_ILLINOIS_SOURCE, parseOneIllinoisFeed } from "./sources/oneIllinois.ts";
 
@@ -41,12 +41,12 @@ async function main(): Promise<void> {
   const output: EventsFile = {
     date: today,
     generatedAt: now.toISOString(),
-    events: eventsOnDates(allEvents, datesFrom(today, DAYS_AHEAD)),
+    events: eventsOnDates(allEvents, coveredDates(today)),
     failedSources,
   };
   await mkdir("public", { recursive: true });
   await writeFile(OUTPUT_PATH, JSON.stringify(output, null, 2) + "\n");
-  console.log(`Wrote ${output.events.length} events for the ${DAYS_AHEAD} days from ${today} to ${OUTPUT_PATH}`);
+  console.log(`Wrote ${output.events.length} events from ${today} through the end of next month to ${OUTPUT_PATH}`);
 
   if (failedSources.length === sources.length) {
     process.exitCode = 1;

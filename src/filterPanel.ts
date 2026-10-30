@@ -11,20 +11,20 @@ const LEGEND = "font-display text-sm font-bold tracking-wide text-muted uppercas
 export function renderFilterPanel(eventTypes: string[], onChange: (filters: Filters) => void): HTMLElement {
   const panel = document.createElement("details");
   panel.className = "mt-6 border-y border-line";
-  // The fixed markup is written here; event types come from the listings, so they're added as text below.
+  // On wide screens the three choices sit side by side. The fixed markup is written here; event types come from the listings, so they're added as text below.
   panel.innerHTML = `
     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-3">
       <span class="font-display font-bold">Filters<span data-count class="text-food"></span></span>
       <span aria-hidden="true" class="chevron shrink-0 text-muted"></span>
     </summary>
-    <form class="pb-5">
+    <form class="pb-5 lg:grid lg:grid-cols-3 lg:gap-x-12">
       <fieldset>
         <legend class="${LEGEND}">Food</legend>
         <div class="mt-2 flex flex-wrap gap-2">
           ${pill("food", "", "Any", true)}${pill("food", "meal", "Meals")}${pill("food", "snack", "Snacks")}
         </div>
       </fieldset>
-      <fieldset class="mt-5">
+      <fieldset class="mt-5 lg:mt-0">
         <legend class="${LEGEND}">Time</legend>
         <div class="mt-2 flex flex-wrap gap-2">
           ${pill("time", "", "Any time", true)}
@@ -42,13 +42,13 @@ export function renderFilterPanel(eventTypes: string[], onChange: (filters: Filt
           <p data-hint class="mt-2 text-sm text-muted">Shows events that overlap these times by at least a minute.</p>
         </div>
       </fieldset>
-      <div class="mt-5">
+      <div class="mt-5 lg:mt-0">
         <label for="event-type" class="${LEGEND}">Event type</label>
         <select id="event-type" name="eventType" class="mt-2 block w-full ${FIELD}">
           <option value="">All event types</option>
         </select>
       </div>
-      <button type="reset" class="mt-5 font-semibold underline decoration-line underline-offset-3 hover:decoration-current">Clear filters</button>
+      <button type="reset" class="mt-5 justify-self-start lg:col-span-3 font-semibold underline decoration-line underline-offset-3 hover:decoration-current">Clear filters</button>
     </form>`;
 
   const form = panel.querySelector("form")!;

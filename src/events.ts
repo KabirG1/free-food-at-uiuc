@@ -30,9 +30,6 @@ export interface EventsFile {
 
 export const CAMPUS_TIME_ZONE = "America/Chicago";
 
-/** How many days of events are saved and shown on the calendar, starting with today. */
-export const DAYS_AHEAD = 14;
-
 /** Returns the calendar date of `time` in Champaign as YYYY-MM-DD. */
 export function campusDate(time: Date): string {
   // The en-CA locale formats dates as YYYY-MM-DD.
@@ -44,6 +41,22 @@ export function datesFrom(start: string, count: number): string[] {
   // Counting in UTC from noon avoids daylight saving changes skipping or repeating a day.
   const first = Date.parse(`${start}T12:00:00Z`);
   return Array.from({ length: count }, (_, day) => new Date(first + day * 86_400_000).toISOString().slice(0, 10));
+}
+
+/** Every date in `month` (YYYY-MM), as YYYY-MM-DD. */
+export function datesInMonth(month: string): string[] {
+  const [year, monthNumber] = month.split("-").map(Number);
+  // Day 0 of the following month is the last day of this one.
+  const length = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return datesFrom(`${month}-01`, length);
+}
+
+/** The dates whose events are saved and shown on the calendar: `today` through the end of next month. */
+export function coveredDates(today: string): string[] {
+  const [year, month] = today.split("-").map(Number);
+  // Month numbers here start at 1 and Date.UTC's at 0, so `month` is the following month.
+  const nextMonth = new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 7);
+  return [...datesInMonth(today.slice(0, 7)).filter((date) => date >= today), ...datesInMonth(nextMonth)];
 }
 
 /** Keeps the events that start on one of `dates` (YYYY-MM-DD in Champaign), earliest first. */
@@ -95,11 +108,11 @@ export interface SavedEventToShow {
  */
 export function savedEventsToShow(saved: FoodEvent[], data: EventsFile | null, now: Date): SavedEventToShow[] {
   const listed = new Map(data?.events.map((event) => [event.id, event]));
-  const coveredDates = new Set(data ? datesFrom(data.date, DAYS_AHEAD) : []);
+  const listedDates = new Set(data ? coveredDates(data.date) : []);
   return saved
     .map((savedCopy) => {
       const latest = listed.get(savedCopy.id);
-      const notListed = latest === undefined && coveredDates.has(campusDate(new Date(savedCopy.start)));
+      const notListed = latest === undefined && listedDates.has(campusDate(new Date(savedCopy.start)));
       return { event: latest ?? savedCopy, notListed };
     })
     .filter(({ event }) => Date.parse(event.end) > now.getTime())
