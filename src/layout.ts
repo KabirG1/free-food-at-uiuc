@@ -9,7 +9,7 @@ const PAGES = [
 
 // Stored reversed so bots that scan the site's files for addresses don't find it written out.
 // (A plain split-and-join gets folded back into one string by the minifier.)
-const CONTACT_EMAIL = [..."moc.liamg@12nagribak"].reverse().join("");
+const CONTACT_EMAIL = [..."moc.liamg@91nagribak"].reverse().join("");
 
 function pageHref(key: string): string {
   return key === "" ? "./" : `./${key}.html`;
