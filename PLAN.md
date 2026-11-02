@@ -27,6 +27,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
    - **C. Follow clubs and preferences.** Follow clubs; remember filter choices.
    - **D. Submit events.** A form, then flyer upload read by AI. Submissions wait for Kabir's approval before appearing. This is the second source.
    - **E. Notifications.** Emails about food from followed clubs or soon nearby (needs an email service, e.g. Resend's free tier).
+   - **F. Google Calendar sync (Kabir, 2026-11-02).** An option on the Account page to connect Google Calendar. Once connected, starring an event adds it to the student's Google Calendar, and removing the star removes it. Optional, off by default. To work out before building: calendar access is a "sensitive" Google permission, so the published app may need Google's verification review; each saved event needs to remember its Google Calendar event so un-starring can delete the right one; and events starred before connecting may need a one-time "add my saved events" step.
 3. **Research how websites look overall** (Kabir, 2026-10-30), to guide later design work beyond the earlier "not vibe coded" pass.
 
 **Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
