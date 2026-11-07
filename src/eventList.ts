@@ -127,7 +127,7 @@ export function renderMessage(heading: string, detail: string, kind: "empty" | "
 }
 
 export function lastCheckedText(data: EventsFile): string {
-  return `Events from OneIllinois, last checked at ${timeFormat.format(new Date(data.generatedAt))}.`;
+  return `Events from OneIllinois and student submissions, last checked at ${timeFormat.format(new Date(data.generatedAt))}.`;
 }
 
 function renderSection(heading: string | null, events: FoodEvent[]): HTMLElement {
@@ -167,18 +167,14 @@ function renderEvent(event: FoodEvent, { ended = false, notListed }: ListOptions
   );
 
   const details = element("div", "min-w-0", "");
-  const title = element("a", `text-lg leading-tight font-semibold ${LINK_CLASSES}`, event.title);
-  title.href = event.url;
-  title.target = "_blank";
-  title.rel = "noopener noreferrer";
   details.append(
-    title,
+    renderTitle(event),
     element("p", "mt-1 text-muted", event.club),
     renderLocation(event.location),
     element("p", "mt-2 font-semibold text-food", describeFood(event)),
   );
   if (notListed?.has(event.id)) {
-    details.append(element("p", "mt-1 text-sm text-error", "No longer listed on OneIllinois, so it may be cancelled."));
+    details.append(element("p", "mt-1 text-sm text-error", "No longer listed, so it may be cancelled."));
   }
 
   item.append(when, details);
@@ -186,6 +182,18 @@ function renderEvent(event: FoodEvent, { ended = false, notListed }: ListOptions
     item.append(renderSaveButton(event));
   }
   return item;
+}
+
+/** The event's name, linked to its page. Submitted events may have no page, so the name is plain text. */
+function renderTitle(event: FoodEvent): HTMLElement {
+  if (event.url === "") {
+    return element("span", "text-lg leading-tight font-semibold", event.title);
+  }
+  const link = element("a", `text-lg leading-tight font-semibold ${LINK_CLASSES}`, event.title);
+  link.href = event.url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  return link;
 }
 
 function renderLocation(location: string): HTMLParagraphElement {

@@ -2,7 +2,7 @@
 // finished events from the previous fetch. That lets the page still show what happened earlier today.
 
 import { readFile } from "node:fs/promises";
-import { campusDate, type EventsFile, type FoodEvent } from "../src/events.ts";
+import { campusDate, isEventLink, type EventsFile, type FoodEvent } from "../src/events.ts";
 
 /**
  * Loads the events saved by the previous fetch: from `PREVIOUS_EVENTS_URL` when set (the live site, in GitHub Actions),
@@ -51,12 +51,12 @@ function isFoodEvent(value: unknown): value is FoodEvent {
     return false;
   }
   const event = value as Record<string, unknown>;
-  const textFields = ["id", "source", "club", "title", "start", "end", "location", "url"];
+  const textFields = ["id", "source", "club", "title", "start", "end", "location"];
   return (
     textFields.every((field) => typeof event[field] === "string" && event[field] !== "") &&
     !Number.isNaN(Date.parse(event.start as string)) &&
     !Number.isNaN(Date.parse(event.end as string)) &&
-    (event.url as string).startsWith("https://") &&
+    isEventLink(event.url) &&
     (event.eventType === undefined || typeof event.eventType === "string") &&
     Array.isArray(event.foodMentions) &&
     event.foodMentions.every((word) => typeof word === "string")

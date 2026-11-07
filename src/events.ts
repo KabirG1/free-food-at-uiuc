@@ -15,7 +15,13 @@ export interface FoodEvent {
   eventType: string;
   /** Food words found in the listing, such as "pizza". Empty if the event is only flagged as having food. */
   foodMentions: string[];
+  /** The event's web page. Empty for a submitted event with no link. */
   url: string;
+}
+
+/** The event's title links here, so only web addresses are allowed (never "javascript:" links). Empty means no link. */
+export function isEventLink(url: unknown): boolean {
+  return typeof url === "string" && (url === "" || url.startsWith("https://"));
 }
 
 export interface EventsFile {

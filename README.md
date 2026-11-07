@@ -1,6 +1,6 @@
 # Free Food @ UIUC
 
-A mobile-friendly web page that lists UIUC club events giving out free food, today and through the end of next month. Events currently come from [OneIllinois](https://one.illinois.edu/events)' public feed.
+A mobile-friendly web page that lists UIUC club events giving out free food, today and through the end of next month. Events come from [OneIllinois](https://one.illinois.edu/events)' public feed and from student submissions that an admin has approved.
 
 **Open the site: https://kabirg1.github.io/free-food-at-uiuc/**
 
@@ -53,4 +53,6 @@ Sign-in uses [Supabase](https://supabase.com) with Google, limited to @illinois.
 - `supabase/002_saved_events.sql` adds the `saved_events` table (each student can read and change only their own rows) and a daily `pg_cron` job that deletes saved events a week after they end. Run it in the SQL Editor too.
 - `src/auth.ts` talks to Google and Supabase; `account.html` and `src/account.ts` are the Account page; `privacy.html` explains what is stored.
 - `src/saveButton.ts` draws the star on each event, `src/savedEvents.ts` reads and writes saved events, and `saved.html` with `src/saved.ts` is the Saved events page.
+- `supabase/003_submissions.sql` adds submitted events and the `admins` list. Run it in the SQL Editor, then add each admin with `insert into public.admins (email) values ('netid@illinois.edu');`. Admins sign in like everyone else; being on that list lets them approve events. Keep their emails out of this public repository.
+- `submit.html` with `src/submit.ts` is the form, and `review.html` with `src/review.ts` is the admins' page, linked from their account menu. `scripts/sources/submissions.ts` reads approved events during the scheduled fetch, so they appear at the next update. It's skipped when the Supabase settings aren't set.
 - The deploy workflow reads the project URL, publishable key, and Google client ID from repository variables `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `GOOGLE_CLIENT_ID` (**Settings → Secrets and variables → Actions → Variables**). All three are public by design. The Google client secret lives only in Supabase.

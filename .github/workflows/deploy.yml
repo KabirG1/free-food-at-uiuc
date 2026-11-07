@@ -30,11 +30,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      # Fails only if every source is down, which keeps the last published list instead of an empty one.
+      # Fails only if OneIllinois is down, which keeps the last published list instead of a nearly empty one.
       - run: npm run fetch-events
         env:
           # The live copy holds today's events that have since ended and dropped out of the feed.
           PREVIOUS_EVENTS_URL: https://kabirg1.github.io/free-food-at-uiuc/events.json
+          # Where approved student submissions are read from. Public values, as in the build step below.
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
       # A free Supabase project pauses after a week with no activity; one tiny query per run keeps it awake.
       # Skipped (without failing the deploy) until the Supabase settings are added to the repository.
       - name: Keep Supabase awake

@@ -17,6 +17,8 @@ export default defineConfig({
         contact: page("contact.html"),
         account: page("account.html"),
         saved: page("saved.html"),
+        submit: page("submit.html"),
+        review: page("review.html"),
         privacy: page("privacy.html"),
       },
     },

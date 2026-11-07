@@ -2,7 +2,7 @@
 // and change their own rows, so nothing here has to be trusted to keep accounts apart.
 
 import { currentUser, supabase } from "./auth.ts";
-import type { FoodEvent } from "./events.ts";
+import { isEventLink, type FoodEvent } from "./events.ts";
 
 let savedEvents: Promise<FoodEvent[] | null> | undefined;
 
@@ -59,8 +59,7 @@ function isFoodEvent(value: unknown): value is FoodEvent {
   const textFields = ["id", "source", "club", "title", "start", "end", "location", "eventType", "url"];
   return (
     textFields.every((field) => typeof event[field] === "string") &&
-    // The title links here, so only web addresses are allowed (never "javascript:" links).
-    (event.url as string).startsWith("https://") &&
+    isEventLink(event.url) &&
     !Number.isNaN(Date.parse(event.start as string)) &&
     !Number.isNaN(Date.parse(event.end as string)) &&
     Array.isArray(event.foodMentions) &&

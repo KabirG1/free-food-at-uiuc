@@ -43,7 +43,7 @@ function signedOut(): HTMLElement[] {
   return [
     heading("Sign in"),
     paragraph("Sign in with your @illinois.edu Google account. Other Google accounts can't sign in."),
-    paragraph("Accounts are optional: everything on the site works without one. Signing in lets you save events and see them on any device. Following clubs and submitting events are coming next."),
+    paragraph("Accounts are optional: everything on the site works without one. Signing in lets you save events, see them on any device, and submit events you know about."),
     buttonBox,
     status,
     privacyNote(),
@@ -107,7 +107,7 @@ function paragraph(text: string): HTMLElement {
 }
 
 function privacyNote(): HTMLElement {
-  const note = element("p", "mt-10 text-sm text-muted", "We store only your name, email, and the events you save. ");
+  const note = element("p", "mt-10 text-sm text-muted", "We store only your name, email, and the events you save or submit. ");
   const link = element("a", "underline decoration-line underline-offset-3 hover:decoration-current", "Privacy");
   link.href = "./privacy.html";
   note.append(link);

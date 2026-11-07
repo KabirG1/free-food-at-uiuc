@@ -5,6 +5,7 @@ import { element } from "./dom.ts";
 const PAGES = [
   { label: "Today", key: "" },
   { label: "Calendar", key: "calendar" },
+  { label: "Submit", key: "submit" },
   { label: "FAQ", key: "faq" },
   { label: "Contact", key: "contact" },
 ];
@@ -100,7 +101,7 @@ function renderNav(nav: HTMLElement, pathname: string): void {
 
   nav.replaceChildren(menuButton, ...rowLinks);
   if (import.meta.env.VITE_SUPABASE_URL) {
-    nav.append(renderAccountControl(["account", "saved"].includes(pageKey(pathname))));
+    nav.append(renderAccountControl(["account", "saved", "review"].includes(pageKey(pathname))));
   }
   nav.append(menuList);
 }
@@ -172,6 +173,18 @@ function renderAccountControl(current: boolean): HTMLElement {
       window.location.reload();
     });
     panel.append(who, savedLink, settingsLink, signOutButton);
+
+    // Only admins get this link, with how many events are waiting. If the check fails, the menu just goes without it.
+    void import("./submissions.ts")
+      .then(({ pendingSubmissionCount }) => pendingSubmissionCount())
+      .then((pending) => {
+        if (pending !== null) {
+          const reviewLink = element("a", menuItem, `Review submissions (${pending})`);
+          reviewLink.href = pageHref("review");
+          savedLink.after(reviewLink);
+        }
+      })
+      .catch(() => undefined);
 
     const button = renderToggle(panel, "flex items-center gap-2 py-1 text-on-brand", true);
     button.setAttribute("aria-label", `Account menu for ${firstName(user)}`);
