@@ -5,6 +5,8 @@ import { currentUser, supabase } from "./auth.ts";
 import { element } from "./dom.ts";
 import { campusDate } from "./events.ts";
 import { renderMessage } from "./eventList.ts";
+import type { FlyerProblem } from "./flyer.ts";
+import { looksLikeAnEvent, type FlyerDetails } from "./flyerRules.ts";
 import { setUpPage } from "./layout.ts";
 import { checkSubmission, type FormProblems, type SubmissionForm } from "./submissionRules.ts";
 import { loadMySubmissions, submitEvent, TooManyPendingError, type SubmissionStatus, type SubmittedEvent } from "./submissions.ts";
@@ -39,13 +41,99 @@ async function showSubmitPage(): Promise<void> {
     return;
   }
   const mine = element("section", "", "");
+  const form = renderForm(user, mine);
   content.replaceChildren(
     element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Submit an event"),
     element("p", "mt-3", "Know about free food that isn't listed? Add it here. An admin checks each event before it goes on the site, and it appears at the site's next update after that."),
-    renderForm(user, mine),
+    renderFlyerUpload(form),
+    form,
     mine,
   );
   await showMySubmissions(user, mine);
+}
+
+/** Choosing a flyer fills in the form below it, for the student to check. It never submits anything by itself. */
+function renderFlyerUpload(form: HTMLFormElement): HTMLElement {
+  const section = element("section", "mt-6 border-y border-line py-4", "");
+  const fileInput = input("file", { accept: "image/*" });
+  fileInput.className = "sr-only";
+  const button = element("label", "inline-block cursor-pointer rounded-sm border border-selected px-4 py-2.5 font-semibold has-focus-visible:outline-2 has-focus-visible:outline-food", "Upload a flyer");
+  button.append(fileInput);
+  const status = element("p", "mt-2", "");
+  status.setAttribute("role", "status");
+  section.append(
+    element("h2", "font-display font-bold", "Have a flyer?"),
+    element("p", "mt-1 text-sm text-muted", "Upload a photo or screenshot and we'll fill in the form for you to check. Flyers are read by Google's Gemini AI, and Google's reviewers may see them, so don't upload anything with personal information like a phone number. We don't keep them."),
+    element("div", "mt-3", ""),
+    status,
+  );
+  section.children[2].append(button);
+
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      return;
+    }
+    fileInput.disabled = true;
+    button.firstChild!.textContent = "Reading flyer…";
+    status.className = "mt-2";
+    status.textContent = "";
+    try {
+      // Loaded only when needed, so the form itself stays quick to open.
+      const { readFlyer } = await import("./flyer.ts");
+      const details = await readFlyer(file);
+      if (!looksLikeAnEvent(details)) {
+        status.className = "mt-2 text-error";
+        status.textContent = "We couldn't find event details in that image. Try a clearer one, or fill in the form yourself.";
+        return;
+      }
+      fillForm(form, details);
+      status.className = "mt-2 font-semibold";
+      status.textContent = "Filled in from the flyer. Check everything below, and fix anything marked in red.";
+    } catch (error) {
+      status.className = "mt-2 text-error";
+      status.textContent = flyerErrorMessage(error);
+    } finally {
+      fileInput.disabled = false;
+      // Clearing it lets the student choose the same file again.
+      fileInput.value = "";
+      button.firstChild!.textContent = "Upload a flyer";
+    }
+  });
+  return section;
+}
+
+function flyerErrorMessage(error: unknown): string {
+  const problem = (error as { problem?: FlyerProblem }).problem;
+  const fillInYourself = "You can still fill in the form yourself.";
+  switch (problem) {
+    case "unreadable_file":
+      return `We couldn't open that file. Try a JPG or PNG, or take a screenshot of the flyer. ${fillInYourself}`;
+    case "daily_limit":
+      return `You've reached today's limit of 10 flyers. ${fillInYourself}`;
+    case "busy":
+      return `Flyer reading is busy right now, so try again later. ${fillInYourself}`;
+    default:
+      return `We couldn't read that flyer. ${fillInYourself}`;
+  }
+}
+
+/** Puts the flyer's details in the form and marks what still needs attention, such as a date that has passed. */
+function fillForm(form: HTMLFormElement, details: FlyerDetails): void {
+  for (const [name, value] of Object.entries(details)) {
+    const control = form.elements.namedItem(name) as HTMLInputElement;
+    // The date starts as today, which would be misleading if the flyer didn't give one.
+    if (value !== "" || name === "date") {
+      control.value = value;
+    }
+  }
+  const values = Object.fromEntries(new FormData(form)) as unknown as SubmissionForm;
+  const result = checkSubmission(values, new Date());
+  if (result.ok) {
+    showProblems(form, {});
+    return;
+  }
+  showProblems(form, details.food === "" ? { ...result.problems, food: "The flyer doesn't mention food. Add what's offered if you know there's food." } : result.problems);
 }
 
 function labelled(id: keyof SubmissionForm, label: string, control: HTMLInputElement | HTMLSelectElement, hint?: string): HTMLElement {
