@@ -1,30 +1,33 @@
 // Google Calendar sync: connecting a student's Google Calendar and keeping the "Free Food @ UIUC" calendar in
-// step with their saved events. Google gives the page short-lived access (about an hour), kept only in this
-// browser tab; nothing that unlocks a student's calendar is stored on our side. The account code is loaded only
-// when needed, so the star button can use this without slowing down the event list.
+// step with their saved events and, if they choose, the events of clubs they follow. Every change (a star,
+// a Follow, a switch, an update button) runs the same sync: work out what the calendar should hold
+// (src/calendarPlan.ts), make those changes in Google, and record them in `calendar_events`.
+//
+// Google gives the page short-lived access (about an hour), kept only in this browser tab; nothing that unlocks
+// a student's calendar is stored on our side. The account code is loaded only when needed, so the star and
+// Follow buttons can use this without slowing down the event list.
 
-import { calendarChanges, type CalendarChange } from "./calendarChanges.ts";
-import type { FoodEvent } from "./events.ts";
-import {
-  addCalendarEvent,
-  CalendarApiError,
-  createCalendar,
-  deleteCalendar,
-  removeCalendarEvent,
-} from "./googleCalendarApi.ts";
+import { planCalendar, type CalendarPlan, type CalendarRecord } from "./calendarPlan.ts";
+import { addCalendarEvent, CalendarApiError, createCalendar, deleteCalendar, removeCalendarEvent } from "./googleCalendarApi.ts";
 import { googleClientId, loadGoogleScript } from "./googleScript.ts";
 
 const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 const ACCESS_KEY = "google-calendar-access";
 
-/** The connected calendar's ID, null when not connected, or undefined until it has been looked up. */
-let knownCalendarId: string | null | undefined;
-let connection: Promise<string | null> | undefined;
+export interface CalendarConnection {
+  calendarId: string;
+  /** "Also add events from clubs I follow" is on. */
+  includeFollowed: boolean;
+}
 
-/** The signed-in student's "Free Food @ UIUC" calendar ID, or null when they haven't connected one. Looked up once per page. */
-export function loadCalendarConnection(): Promise<string | null> {
+/** The connection, null when not connected, or undefined until it has been looked up. */
+let known: CalendarConnection | null | undefined;
+let connection: Promise<CalendarConnection | null> | undefined;
+
+/** The signed-in student's calendar connection, or null when they haven't connected one. Looked up once per page. */
+export function loadCalendarConnection(): Promise<CalendarConnection | null> {
   connection ??= fetchConnection().then(
-    (calendarId) => (knownCalendarId = calendarId),
+    (found) => (known = found),
     (error: unknown) => {
       connection = undefined;
       throw error;
@@ -33,21 +36,21 @@ export function loadCalendarConnection(): Promise<string | null> {
   return connection;
 }
 
-async function fetchConnection(): Promise<string | null> {
+async function fetchConnection(): Promise<CalendarConnection | null> {
   const { currentUser, supabase } = await import("./auth.ts");
   if (supabase === null || !googleClientId || (await currentUser()) === null) {
     return null;
   }
-  const { data, error } = await supabase.from("google_calendars").select("calendar_id").maybeSingle();
+  const { data, error } = await supabase.from("google_calendars").select("calendar_id, include_followed").maybeSingle();
   if (error) {
     throw error;
   }
-  return typeof data?.calendar_id === "string" ? data.calendar_id : null;
+  return typeof data?.calendar_id === "string" ? { calendarId: data.calendar_id, includeFollowed: data.include_followed === true } : null;
 }
 
-function rememberConnection(calendarId: string | null): void {
-  knownCalendarId = calendarId;
-  connection = Promise.resolve(calendarId);
+function rememberConnection(found: CalendarConnection | null): void {
+  known = found;
+  connection = Promise.resolve(found);
 }
 
 // Access saved for this tab only, so moving between pages doesn't ask Google again. Storage can be blocked
@@ -119,10 +122,17 @@ export async function prepareCalendarAccess(): Promise<void> {
   });
 }
 
+/** On pages with stars or Follow buttons: gets Google's script ready when a calendar is connected. */
+export function prepareIfConnected(): void {
+  loadCalendarConnection()
+    .then((found) => (found === null ? undefined : prepareCalendarAccess()))
+    .catch(() => undefined);
+}
+
 /**
  * Short-lived access to the student's calendar. Call it straight from a tap, before any `await`: when Google
  * needs to open its window, browsers only allow that during a tap. `askPermission` shows Google's permission
- * screen even if the student already allowed it, for the Connect button.
+ * screen even if the student already allowed it, for turning Google Calendar on.
  */
 export function requestCalendarAccess(askPermission = false): Promise<string> {
   const saved = askPermission ? null : storedAccess();
@@ -147,29 +157,96 @@ export interface CalendarAccess {
 }
 
 /**
- * For a star tap: starts getting access when the student has connected Google Calendar, or resolves to null
- * when they haven't. Call it before any `await`, for the same reason as `requestCalendarAccess`.
+ * For a tap that may change the calendar: starts getting access when the student has connected Google Calendar,
+ * or resolves to null when there's nothing to do. `forFollowing` is for Follow and Unfollow, which only matter
+ * with "Also add events from clubs I follow" on. Call it before any `await`, like `requestCalendarAccess`.
  */
-export function calendarAccessForTap(): Promise<CalendarAccess | null> {
-  const withAccess = (calendarId: string | null) =>
-    calendarId === null ? Promise.resolve(null) : requestCalendarAccess().then((token) => ({ token, calendarId }));
-  const access = knownCalendarId === undefined ? loadCalendarConnection().then(withAccess) : withAccess(knownCalendarId);
-  // The star may give up before using this (say, the save failed), so a failure here mustn't go unhandled.
+export function calendarAccessForTap(forFollowing = false): Promise<CalendarAccess | null> {
+  const withAccess = (found: CalendarConnection | null) =>
+    found === null || (forFollowing && !found.includeFollowed)
+      ? Promise.resolve(null)
+      : requestCalendarAccess().then((token) => ({ token, calendarId: found.calendarId }));
+  const access = known === undefined ? loadCalendarConnection().then(withAccess) : withAccess(known);
+  // The tap may give up before using this (say, the save failed), so a failure here mustn't go unhandled.
   access.catch(() => undefined);
   return access;
 }
 
-/** Adds the event to the student's calendar, or removes it, after they save or unsave it. False when no calendar is connected. */
-export async function syncSavedEvent(access: Promise<CalendarAccess | null>, event: FoodEvent, saved: boolean): Promise<boolean> {
+async function loadCalendarRecords(): Promise<CalendarRecord[]> {
+  const [{ supabase }, { isFoodEvent }] = await Promise.all([import("./auth.ts"), import("./savedEvents.ts")]);
+  if (supabase === null) {
+    return [];
+  }
+  const { data, error } = await supabase.from("calendar_events").select("event, marked_cancelled");
+  if (error) {
+    throw error;
+  }
+  return data
+    .filter((row) => isFoodEvent(row.event))
+    .map((row) => ({ event: row.event, markedCancelled: row.marked_cancelled === true }));
+}
+
+/** What needs to change in the connected calendar right now. Empty when it isn't connected. */
+export async function currentCalendarPlan(): Promise<CalendarPlan> {
+  const found = await loadCalendarConnection();
+  if (found === null) {
+    return { add: [], update: [], remove: [] };
+  }
+  const [{ loadSavedEvents }, followedClubs, { loadEventsFile }] = await Promise.all([
+    import("./savedEvents.ts"),
+    import("./followedClubs.ts"),
+    import("./eventList.ts"),
+  ]);
+  const [inCalendar, saved, data] = await Promise.all([loadCalendarRecords(), loadSavedEvents(), loadEventsFile()]);
+  if (found.includeFollowed) {
+    await followedClubs.loadFollowedClubs();
+  }
+  return planCalendar({
+    inCalendar,
+    saved: saved ?? [],
+    followedClubs: found.includeFollowed ? followedClubs.followedClubKeys() : new Set(),
+    data,
+    now: new Date(),
+  });
+}
+
+/** Makes the changes in `plan`, one at a time to stay well inside Google's limits, recording each as it's done. */
+async function applyPlan(calendar: CalendarAccess, plan: CalendarPlan): Promise<void> {
+  const { supabase } = await import("./auth.ts");
+  if (supabase === null) {
+    return;
+  }
+  for (const { event, maybeCancelled } of [...plan.add, ...plan.update]) {
+    await addCalendarEvent(calendar.token, calendar.calendarId, event, maybeCancelled);
+    const { error } = await supabase
+      .from("calendar_events")
+      .upsert({ event_id: event.id, event, ends_at: event.end, marked_cancelled: maybeCancelled });
+    if (error) {
+      throw error;
+    }
+  }
+  for (const event of plan.remove) {
+    await removeCalendarEvent(calendar.token, calendar.calendarId, event.id);
+    const { error } = await supabase.from("calendar_events").delete().eq("event_id", event.id);
+    if (error) {
+      throw error;
+    }
+  }
+}
+
+/**
+ * Brings the calendar up to date. Resolves to null when there was nothing to do because Google Calendar isn't
+ * connected (or, for a Follow tap, followed clubs aren't included), otherwise to what was changed.
+ */
+export async function syncCalendar(access: Promise<CalendarAccess | null>): Promise<CalendarPlan | null> {
   const calendar = await access;
   if (calendar === null) {
-    return false;
+    return null;
   }
   try {
-    await (saved
-      ? addCalendarEvent(calendar.token, calendar.calendarId, event)
-      : removeCalendarEvent(calendar.token, calendar.calendarId, event.id));
-    return true;
+    const plan = await currentCalendarPlan();
+    await applyPlan(calendar, plan);
+    return plan;
   } catch (error) {
     // 401 means Google no longer accepts this access (it ran out, or the student withdrew it): ask afresh next time.
     if (error instanceof CalendarApiError && error.status === 401) {
@@ -196,52 +273,13 @@ export function calendarErrorMessage(error: unknown, start: string): string {
   return `${start} Check your connection and try again.${reason === "" ? "" : ` (Details: ${reason})`}`;
 }
 
-/** Brings the calendar copies of `changes` up to date, then stores the latest copies so they aren't reported again. */
-export async function updateCalendarChanges(calendar: CalendarAccess, changes: CalendarChange[]): Promise<void> {
-  const { updateSavedCopy } = await import("./savedEvents.ts");
-  // One at a time, to stay well inside Google's limits.
-  for (const change of changes) {
-    await addCalendarEvent(calendar.token, calendar.calendarId, change.event, change.maybeCancelled);
-    await updateSavedCopy(change.event, change.maybeCancelled);
-  }
-}
-
-/**
- * After a star tap that already has Google's access: fixes any other saved events that changed. Failures are
- * left quiet, since the tap itself worked and the Saved page offers the update again.
- */
-export async function updateChangedEventsQuietly(access: Promise<CalendarAccess | null>): Promise<void> {
-  try {
-    const calendar = await access;
-    if (calendar === null) {
-      return;
-    }
-    const [{ loadSavedRecords }, { loadEventsFile }] = await Promise.all([import("./savedEvents.ts"), import("./eventList.ts")]);
-    const saved = await loadSavedRecords();
-    if (saved !== null) {
-      await updateCalendarChanges(calendar, calendarChanges(saved, await loadEventsFile(), new Date()));
-    }
-  } catch {
-    // Offered again on the Saved page.
-  }
-}
-
-/** Adds each of `events` to the calendar, one at a time to stay well inside Google's limits. */
-async function addEvents(token: string, calendarId: string, events: FoodEvent[]): Promise<void> {
-  for (const event of events) {
-    await addCalendarEvent(token, calendarId, event);
-  }
-}
-
-/**
- * Creates the "Free Food @ UIUC" calendar, remembers it with the account, and adds `upcomingSaved` (the
- * student's saved events that haven't ended) to it.
- */
-export async function connectCalendar(access: Promise<string>, upcomingSaved: FoodEvent[]): Promise<void> {
+/** Creates the "Free Food @ UIUC" calendar, remembers it with the account, and adds the student's saved events. */
+export async function connectCalendar(access: Promise<string>): Promise<CalendarPlan> {
   const token = await access;
-  const { supabase } = await import("./auth.ts");
-  if (supabase === null) {
-    throw new Error("Accounts aren't set up");
+  const { currentUser, supabase } = await import("./auth.ts");
+  const user = await currentUser();
+  if (supabase === null || user === null) {
+    throw new Error("Not signed in");
   }
   const calendarId = await createCalendar(token);
   const { error } = await supabase.from("google_calendars").insert({ calendar_id: calendarId });
@@ -250,35 +288,59 @@ export async function connectCalendar(access: Promise<string>, upcomingSaved: Fo
     await deleteCalendar(token, calendarId).catch(() => undefined);
     throw error;
   }
-  rememberConnection(calendarId);
-  await addEvents(token, calendarId, upcomingSaved);
+  // Anything recorded from an earlier connection belonged to a calendar that's gone.
+  const { error: clearError } = await supabase.from("calendar_events").delete().eq("user_id", user.id);
+  if (clearError) {
+    throw clearError;
+  }
+  rememberConnection({ calendarId, includeFollowed: false });
+  return (await syncCalendar(Promise.resolve({ token, calendarId })))!;
 }
 
-/** Adds `upcomingSaved` to the connected calendar again, filling in any that are missing. */
-export async function addSavedEventsAgain(access: Promise<string>, upcomingSaved: FoodEvent[]): Promise<void> {
+/**
+ * Turns "Also add events from clubs I follow" on or off, then adds or removes those events. If the calendar
+ * can't be updated, the setting goes back to how it was, so the switch matches the calendar.
+ */
+export async function setIncludeFollowed(access: Promise<string>, include: boolean): Promise<CalendarPlan> {
   const token = await access;
-  const calendarId = await loadCalendarConnection();
-  if (calendarId === null) {
+  const found = await loadCalendarConnection();
+  const { supabase } = await import("./auth.ts");
+  if (found === null || supabase === null) {
     throw new Error("Google Calendar isn't connected");
   }
-  await addEvents(token, calendarId, upcomingSaved);
+  const save = async (value: boolean) => {
+    const { error } = await supabase.from("google_calendars").update({ include_followed: value }).eq("calendar_id", found.calendarId);
+    if (error) {
+      throw error;
+    }
+    rememberConnection({ ...found, includeFollowed: value });
+  };
+  await save(include);
+  try {
+    return (await syncCalendar(Promise.resolve({ token, calendarId: found.calendarId })))!;
+  } catch (error) {
+    await save(found.includeFollowed).catch(() => undefined);
+    throw error;
+  }
 }
 
 /** Deletes the "Free Food @ UIUC" calendar, forgets it, and gives up the site's access to Google Calendar. */
 export async function disconnectCalendar(access: Promise<string>): Promise<void> {
   const token = await access;
-  const calendarId = await loadCalendarConnection();
+  const found = await loadCalendarConnection();
   const { currentUser, supabase } = await import("./auth.ts");
   const user = await currentUser();
   if (supabase === null || user === null) {
     throw new Error("Not signed in");
   }
-  if (calendarId !== null) {
-    await deleteCalendar(token, calendarId);
+  if (found !== null) {
+    await deleteCalendar(token, found.calendarId);
   }
-  const { error } = await supabase.from("google_calendars").delete().eq("user_id", user.id);
-  if (error) {
-    throw error;
+  for (const table of ["calendar_events", "google_calendars"]) {
+    const { error } = await supabase.from(table).delete().eq("user_id", user.id);
+    if (error) {
+      throw error;
+    }
   }
   rememberConnection(null);
   forgetAccess();

@@ -2,21 +2,21 @@
 
 import type { User } from "@supabase/supabase-js";
 import { currentUser, deleteMyAccount, fullName, renderGoogleButton, signOut, supabase } from "./auth.ts";
+import { describePlan, planSize } from "./calendarPlan.ts";
 import { element } from "./dom.ts";
-import { loadEventsFile } from "./eventList.ts";
-import { savedEventsToShow, type FoodEvent } from "./events.ts";
 import {
-  addSavedEventsAgain,
+  calendarAccessForTap,
   calendarErrorMessage,
   connectCalendar,
   disconnectCalendar,
   loadCalendarConnection,
   prepareCalendarAccess,
   requestCalendarAccess,
+  setIncludeFollowed,
+  syncCalendar,
 } from "./googleCalendar.ts";
 import { CALENDAR_NAME } from "./googleCalendarApi.ts";
 import { setUpPage } from "./layout.ts";
-import { loadSavedEvents } from "./savedEvents.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 
@@ -78,9 +78,9 @@ function signedIn(user: User): HTMLElement[] {
   const deleteStatus = element("p", "mt-3 text-error", "");
   deleteStatus.setAttribute("role", "status");
   deleteButton.addEventListener("click", async () => {
-    const calendarId = await loadCalendarConnection().catch(() => null);
+    const calendar = await loadCalendarConnection().catch(() => null);
     // Deleting the account can't reach Google, so the calendar would stay behind.
-    const calendarNote = calendarId === null ? "" : ` Your “${CALENDAR_NAME}” Google calendar will stay; to delete it, turn off Google Calendar first.`;
+    const calendarNote = calendar === null ? "" : ` Your “${CALENDAR_NAME}” Google calendar will stay; to delete it, turn off Google Calendar first.`;
     if (!window.confirm(`Delete your account? Your name, email, saved events, and followed clubs will be removed. This can't be undone.${calendarNote}`)) {
       return;
     }
@@ -108,34 +108,43 @@ function signedIn(user: User): HTMLElement[] {
   ];
 }
 
-/**
- * The Google Calendar setting: a switch, off until the student turns it on. Turning it on asks Google for
- * permission and creates the calendar; turning it off asks first, then deletes the calendar. The switch only
- * changes once that has worked, so it always shows whether the calendar is really connected.
- */
-function calendarSection(): HTMLElement {
-  const section = element("section", "", "");
-  const labelId = "calendar-switch-label";
+/** An on/off switch with its label, for the Google Calendar settings. */
+function renderSwitch(id: string, labelText: string): { row: HTMLElement; toggle: HTMLButtonElement } {
   const row = element("div", "mt-4 flex items-center justify-between gap-4", "");
-  const label = element("label", "cursor-pointer font-semibold", "Add saved events to Google Calendar");
-  label.id = labelId;
-  label.htmlFor = "calendar-switch";
+  const label = element("label", "cursor-pointer font-semibold", labelText);
+  label.id = `${id}-label`;
+  label.htmlFor = id;
   const toggle = element(
     "button",
     "group relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full bg-muted transition-colors aria-checked:bg-selected disabled:cursor-default disabled:opacity-60",
     "",
   );
-  toggle.id = "calendar-switch";
+  toggle.id = id;
   toggle.type = "button";
   toggle.setAttribute("role", "switch");
   toggle.setAttribute("aria-checked", "false");
-  toggle.setAttribute("aria-labelledby", labelId);
+  toggle.setAttribute("aria-labelledby", label.id);
   toggle.disabled = true;
   const knob = element("span", "absolute top-0.5 left-0.5 size-6 rounded-full bg-page transition-transform group-aria-checked:translate-x-5", "");
   knob.setAttribute("aria-hidden", "true");
   toggle.append(knob);
   row.append(label, toggle);
+  return { row, toggle };
+}
 
+function isOn(toggle: HTMLButtonElement): boolean {
+  return toggle.getAttribute("aria-checked") === "true";
+}
+
+/**
+ * The Google Calendar settings: a switch for Google Calendar itself, off until the student turns it on, and
+ * once it's on, a second switch for adding followed clubs' events. Turning Google Calendar on asks Google for
+ * permission and creates the calendar; turning it off asks first, then deletes the calendar. Each switch only
+ * changes once that has worked, so it always shows what the calendar really holds.
+ */
+function calendarSection(): HTMLElement {
+  const section = element("section", "", "");
+  const main = renderSwitch("calendar-switch", "Add saved events to Google Calendar");
   const explanation = paragraph(
     `Adds the events you save to a calendar called “${CALENDAR_NAME}” in your Google Calendar, and removes them when you unsave them. The site can only see and change that one calendar, never your other events.`,
   );
@@ -146,10 +155,23 @@ function calendarSection(): HTMLElement {
     status.className = statusClass(kind);
   };
 
-  // Shown only while it's on, for events missed while Google couldn't be reached.
-  const addAgain = element("button", `mt-4 cursor-pointer ${SECONDARY_BUTTON}`, "Add saved events again");
-  addAgain.type = "button";
-  addAgain.hidden = true;
+  // Shown only while Google Calendar is on.
+  const extras = element("div", "", "");
+  extras.hidden = true;
+  const followed = renderSwitch("followed-switch", "Also add events from clubs I follow");
+  const followedNote = element(
+    "p",
+    "mt-2 text-sm text-muted",
+    "Adds every upcoming event from the clubs you follow. Unfollowing a club removes its events, except ones you saved.",
+  );
+  const update = element("button", `mt-6 cursor-pointer ${SECONDARY_BUTTON}`, "Update Google Calendar");
+  update.type = "button";
+  const updateNote = element(
+    "p",
+    "mt-2 text-sm text-muted",
+    "Adds anything missing, updates events that changed, and removes ones you no longer need. Happens on its own when you save or follow.",
+  );
+  extras.append(followed.row, followedNote, update, updateNote);
 
   // Turning off deletes the calendar, so it asks first, on the page: a browser popup could use up the tap
   // Google's window needs to open.
@@ -166,55 +188,78 @@ function calendarSection(): HTMLElement {
     confirmButtons,
   );
 
-  const setOn = (on: boolean) => {
-    toggle.setAttribute("aria-checked", String(on));
-    toggle.disabled = false;
-    addAgain.hidden = !on;
+  const showSettings = (connected: boolean, includeFollowed: boolean) => {
+    main.toggle.setAttribute("aria-checked", String(connected));
+    main.toggle.disabled = false;
+    followed.toggle.setAttribute("aria-checked", String(includeFollowed));
+    followed.toggle.disabled = false;
+    extras.hidden = !connected;
     confirmBox.hidden = true;
-    note.textContent = on
-      ? "If an event is missing, for example one saved while Google couldn't be reached, add your saved events again."
+    note.textContent = connected
+      ? ""
       : "Off. Google asks for permission when you turn it on. Afterwards, a Google window may briefly open when you save an event.";
   };
 
-  toggle.addEventListener("click", async () => {
-    if (toggle.getAttribute("aria-checked") === "true") {
+  main.toggle.addEventListener("click", async () => {
+    if (isOn(main.toggle)) {
       confirmBox.hidden = false;
       confirmButton.focus();
       return;
     }
     // First, while the tap still counts, so Google's window is allowed to open.
     const access = requestCalendarAccess(true);
-    toggle.disabled = true;
+    main.toggle.disabled = true;
     note.textContent = "Connecting… Allow access in Google's window.";
     showStatus("", "success");
     try {
-      const events = await upcomingSavedEvents();
-      await connectCalendar(access, events);
-      setOn(true);
-      showStatus(events.length === 0 ? "Connected. Events you save from now on will be added." : `Connected. Added ${countText(events.length)} you saved.`, "success");
+      const added = (await connectCalendar(access)).add.length;
+      showSettings(true, false);
+      showStatus(added === 0 ? "Connected. Events you save from now on will be added." : `Connected. Added ${countText(added)} you saved.`, "success");
     } catch (error) {
-      setOn(false);
+      showSettings(false, false);
       showStatus(calendarErrorMessage(error, "Couldn't connect Google Calendar."), "error");
+    }
+  });
+
+  followed.toggle.addEventListener("click", async () => {
+    const include = !isOn(followed.toggle);
+    const access = requestCalendarAccess();
+    followed.toggle.disabled = true;
+    showStatus(include ? "Adding events from clubs you follow…" : "Removing events from clubs you follow…", "success");
+    try {
+      const plan = await setIncludeFollowed(access, include);
+      showSettings(true, include);
+      showStatus(
+        include
+          ? plan.add.length === 0
+            ? "On. Clubs you follow have no upcoming events to add right now."
+            : `On. Added ${countText(plan.add.length)} from clubs you follow.`
+          : `Off. Removed ${countText(plan.remove.length)} from clubs you follow. Events you saved stay.`,
+        "success",
+      );
+    } catch (error) {
+      showSettings(true, !include);
+      showStatus(calendarErrorMessage(error, "Couldn't change that setting."), "error");
     }
   });
 
   cancelButton.addEventListener("click", () => {
     confirmBox.hidden = true;
-    toggle.focus();
+    main.toggle.focus();
   });
 
   confirmButton.addEventListener("click", async () => {
     const access = requestCalendarAccess();
     confirmButton.disabled = true;
     cancelButton.disabled = true;
-    toggle.disabled = true;
+    main.toggle.disabled = true;
     confirmButton.textContent = "Turning off…";
     try {
       await disconnectCalendar(access);
-      setOn(false);
+      showSettings(false, false);
       showStatus(`Turned off. The “${CALENDAR_NAME}” calendar was deleted.`, "success");
     } catch (error) {
-      toggle.disabled = false;
+      main.toggle.disabled = false;
       showStatus(calendarErrorMessage(error, "Couldn't turn off Google Calendar."), "error");
     }
     confirmButton.disabled = false;
@@ -222,25 +267,27 @@ function calendarSection(): HTMLElement {
     confirmButton.textContent = "Delete calendar and turn off";
   });
 
-  addAgain.addEventListener("click", async () => {
-    const access = requestCalendarAccess();
-    addAgain.disabled = true;
-    addAgain.textContent = "Adding…";
+  update.addEventListener("click", async () => {
+    const access = calendarAccessForTap();
+    update.disabled = true;
+    update.textContent = "Updating…";
     try {
-      const events = await upcomingSavedEvents();
-      await addSavedEventsAgain(access, events);
-      showStatus(events.length === 0 ? "You have no upcoming saved events to add." : `Added ${countText(events.length)} to Google Calendar.`, "success");
+      const plan = await syncCalendar(access);
+      if (plan === null) {
+        throw new Error("Google Calendar isn't connected");
+      }
+      showStatus(planSize(plan) === 0 ? "Google Calendar was already up to date." : `Updated Google Calendar: ${describePlan(plan)}.`, "success");
     } catch (error) {
-      showStatus(calendarErrorMessage(error, "Couldn't add your saved events."), "error");
+      showStatus(calendarErrorMessage(error, "Couldn't update Google Calendar."), "error");
     }
-    addAgain.disabled = false;
-    addAgain.textContent = "Add saved events again";
+    update.disabled = false;
+    update.textContent = "Update Google Calendar";
   });
 
   loadCalendarConnection().then(
-    (calendarId) => {
-      setOn(calendarId !== null);
-      // Loaded now so Google's window can open the moment the switch is pressed.
+    (found) => {
+      showSettings(found !== null, found?.includeFollowed ?? false);
+      // Loaded now so Google's window can open the moment a switch is pressed.
       prepareCalendarAccess().catch(() => undefined);
     },
     () => {
@@ -249,14 +296,8 @@ function calendarSection(): HTMLElement {
     },
   );
 
-  section.append(element("h2", "mt-10 font-display text-lg font-bold", "Google Calendar"), row, explanation, note, addAgain, confirmBox, status);
+  section.append(element("h2", "mt-10 font-display text-lg font-bold", "Google Calendar"), main.row, explanation, note, confirmBox, extras, status);
   return section;
-}
-
-/** The student's saved events that haven't ended, using the latest listing where there is one. */
-async function upcomingSavedEvents(): Promise<FoodEvent[]> {
-  const saved = (await loadSavedEvents()) ?? [];
-  return savedEventsToShow(saved, await loadEventsFile(), new Date()).map(({ event }) => event);
 }
 
 function countText(count: number): string {

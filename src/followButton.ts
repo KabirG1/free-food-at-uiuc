@@ -4,6 +4,7 @@
 import { element } from "./dom.ts";
 import { clubKey } from "./events.ts";
 import { isFollowing, loadFollowedClubs, onFollowedClubsChange, setFollowing } from "./followedClubs.ts";
+import { calendarAccessForTap, prepareIfConnected, syncCalendar, type CalendarAccess } from "./googleCalendar.ts";
 import { showNotice } from "./notice.ts";
 
 let listening = false;
@@ -25,12 +26,16 @@ export function renderFollowButton(club: string): HTMLButtonElement {
     listening = true;
     onFollowedClubsChange(updateButtons);
     // A failure here is reported when a button is tapped, not on page load.
-    loadFollowedClubs().catch(() => undefined);
+    loadFollowedClubs()
+      .then((signedIn) => (signedIn ? prepareIfConnected() : undefined))
+      .catch(() => undefined);
   }
   return button;
 }
 
 async function toggleFollowing(club: string): Promise<void> {
+  // First, while the tap still counts: browsers only let Google's window open during one.
+  const calendar = calendarAccessForTap(true);
   let signedIn: boolean;
   try {
     signedIn = await loadFollowedClubs();
@@ -51,6 +56,32 @@ async function toggleFollowing(club: string): Promise<void> {
     }
   } catch {
     showNotice(follow ? "Couldn't follow that club. Try again." : "Couldn't unfollow that club. Try again.");
+    return;
+  }
+  await syncAfterFollowing(calendar, club, follow);
+}
+
+/**
+ * With "Also add events from clubs I follow" on, adds the club's events to Google Calendar, or removes the ones
+ * that aren't saved. Shared with the Following page's Unfollow buttons.
+ */
+export async function syncAfterFollowing(calendar: Promise<CalendarAccess | null>, club: string, follow: boolean): Promise<void> {
+  try {
+    const plan = await syncCalendar(calendar);
+    if (plan !== null && follow) {
+      const added = plan.add.length;
+      showNotice(
+        added === 0
+          ? `Following ${club.trim()}. It has no upcoming events to add to Google Calendar yet.`
+          : `Following ${club.trim()}. Added ${added} ${added === 1 ? "event" : "events"} to Google Calendar.`,
+        { label: "See clubs you follow", href: "./following.html" },
+      );
+    }
+  } catch {
+    showNotice(follow ? "Following, but couldn't add the club's events to Google Calendar." : "Unfollowed, but couldn't update Google Calendar.", {
+      label: "Try again on Account page",
+      href: "./account.html",
+    });
   }
 }
 

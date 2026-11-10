@@ -4,7 +4,9 @@
 import { supabase } from "./auth.ts";
 import { element } from "./dom.ts";
 import { renderMessage } from "./eventList.ts";
+import { syncAfterFollowing } from "./followButton.ts";
 import { followedClubNames, loadFollowedClubs, onFollowedClubsChange, setFollowing } from "./followedClubs.ts";
+import { calendarAccessForTap, prepareIfConnected } from "./googleCalendar.ts";
 import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
@@ -43,6 +45,7 @@ async function showFollowing(): Promise<void> {
   const showList = () => list.replaceChildren(...renderClubs(status));
   onFollowedClubsChange(showList);
   showList();
+  prepareIfConnected();
 }
 
 function renderClubs(status: HTMLElement): HTMLElement[] {
@@ -56,6 +59,8 @@ function renderClubs(status: HTMLElement): HTMLElement[] {
     unfollowButton.type = "button";
     unfollowButton.setAttribute("aria-label", `Unfollow ${name}`);
     unfollowButton.addEventListener("click", async () => {
+      // First, while the tap still counts, so Google's window is allowed to open.
+      const calendar = calendarAccessForTap(true);
       unfollowButton.disabled = true;
       status.textContent = "";
       try {
@@ -63,7 +68,9 @@ function renderClubs(status: HTMLElement): HTMLElement[] {
         await setFollowing(name, false);
       } catch {
         status.textContent = `Couldn't unfollow ${name}. Check your connection and try again.`;
+        return;
       }
+      await syncAfterFollowing(calendar, name, false);
     });
     const item = element("li", "flex items-center justify-between gap-4 py-3", "");
     // Opens Today with the Club filter set to this club.

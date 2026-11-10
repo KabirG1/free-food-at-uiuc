@@ -3,13 +3,7 @@
 
 import { element } from "./dom.ts";
 import type { FoodEvent } from "./events.ts";
-import {
-  calendarAccessForTap,
-  loadCalendarConnection,
-  prepareCalendarAccess,
-  syncSavedEvent,
-  updateChangedEventsQuietly,
-} from "./googleCalendar.ts";
+import { calendarAccessForTap, prepareIfConnected, syncCalendar } from "./googleCalendar.ts";
 import { showNotice } from "./notice.ts";
 
 const savedIds = new Set<string>();
@@ -49,9 +43,7 @@ async function loadSavedIds(): Promise<boolean> {
     updateButtons();
     if (saved !== null) {
       // With Google Calendar connected, get Google's script ready so a tap can open its window if needed.
-      void loadCalendarConnection()
-        .then((calendarId) => (calendarId === null ? undefined : prepareCalendarAccess()))
-        .catch(() => undefined);
+      prepareIfConnected();
     }
     return saved !== null;
   } catch {
@@ -92,20 +84,17 @@ async function toggleSaved(event: FoodEvent): Promise<void> {
   }
 
   try {
-    if (await syncSavedEvent(calendar, event, saving)) {
-      if (saving) {
-        showNotice("Saved and added to Google Calendar.", { label: "See saved events", href: "./saved.html" });
-      }
-      // While Google's access is at hand, bring any other changed events up to date too.
-      void updateChangedEventsQuietly(calendar);
+    // Adds or removes this event, and brings anything else out of date up to date while Google's access is at hand.
+    // Unsaving leaves the event in the calendar if its club is one the student follows (with that switch on).
+    if ((await syncCalendar(calendar)) !== null && saving) {
+      showNotice("Saved and added to Google Calendar.", { label: "See saved events", href: "./saved.html" });
     }
   } catch {
-    // The save itself worked, so the star stays as it is. The Account page can add missing events again.
-    if (saving) {
-      showNotice("Saved, but couldn't add it to Google Calendar.", { label: "Try again on Account page", href: "./account.html" });
-    } else {
-      showNotice("Unsaved, but couldn't remove it from Google Calendar. You can delete it there.");
-    }
+    // The save itself worked, so the star stays as it is. The Account page can bring the calendar up to date.
+    showNotice(saving ? "Saved, but couldn't add it to Google Calendar." : "Unsaved, but couldn't update Google Calendar.", {
+      label: "Try again on Account page",
+      href: "./account.html",
+    });
   }
 }
 
