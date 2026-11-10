@@ -24,7 +24,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-11-09: Clear form button on Submit (Kabir's request).** Empties every field, puts the date back to today, and removes red marks and the flyer message. It clears without an "Are you sure?" popup (Claude's choice, open to overruling). Kabir tried it after a flyer upload.
 - **2026-11-09: Site redesign reviewed.** The "not vibe coded" rebuild (Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps). Kabir checked the phone version and said it looks good.
 - **2026-11-09: Follow clubs (accounts phase C).** A Follow button after each club name (it turns into a filled-in "Following"), a "Clubs I follow" choice in Filters, and a Following page in the profile menu listing followed clubs with Unfollow buttons (`supabase/005_followed_clubs.sql`). Kabir ran the SQL and tried it.
-- **2026-11-09: Club filter and club links.** Filters has a Club box: typing part of a name shows up to 8 matching clubs from the listings (names starting with it first), and the list narrows to clubs whose names contain it. Each club on the Following page links to Today with that club already in the box (Filters stays closed, showing "Filters · 1"). Kabir tried both, on laptop and phone width.
+- **2026-11-09: Club filter and club links.** Filters has a Club box: typing part of a name shows up to 8 matching clubs from the listings (names starting with it first), and the list narrows to clubs whose names contain it. Each club on the Following page links to Today with that club already in the box (Filters stays closed, showing "Filters · 1"). Kabir tried both.
 
 ## Next
 
