@@ -3,6 +3,7 @@
 
 import { element } from "./dom.ts";
 import type { FoodEvent } from "./events.ts";
+import { calendarAccessForTap, loadCalendarConnection, prepareCalendarAccess, syncSavedEvent } from "./googleCalendar.ts";
 import { showNotice } from "./notice.ts";
 
 const savedIds = new Set<string>();
@@ -40,6 +41,12 @@ async function loadSavedIds(): Promise<boolean> {
       savedIds.add(event.id);
     }
     updateButtons();
+    if (saved !== null) {
+      // With Google Calendar connected, get Google's script ready so a tap can open its window if needed.
+      void loadCalendarConnection()
+        .then((calendarId) => (calendarId === null ? undefined : prepareCalendarAccess()))
+        .catch(() => undefined);
+    }
     return saved !== null;
   } catch {
     // Try again on the next tap.
@@ -49,6 +56,8 @@ async function loadSavedIds(): Promise<boolean> {
 }
 
 async function toggleSaved(event: FoodEvent): Promise<void> {
+  // First, while the tap still counts: browsers only let Google's window open during one.
+  const calendar = calendarAccessForTap();
   let isSignedIn: boolean;
   try {
     isSignedIn = await (signedIn ??= loadSavedIds());
@@ -73,6 +82,20 @@ async function toggleSaved(event: FoodEvent): Promise<void> {
   } catch {
     setSaved(event.id, !saving);
     showNotice(saving ? "Couldn't save that event. Try again." : "Couldn't remove that event. Try again.");
+    return;
+  }
+
+  try {
+    if ((await syncSavedEvent(calendar, event, saving)) && saving) {
+      showNotice("Saved and added to Google Calendar.", { label: "See saved events", href: "./saved.html" });
+    }
+  } catch {
+    // The save itself worked, so the star stays as it is. The Account page can add missing events again.
+    if (saving) {
+      showNotice("Saved, but couldn't add it to Google Calendar.", { label: "Try again on Account page", href: "./account.html" });
+    } else {
+      showNotice("Unsaved, but couldn't remove it from Google Calendar. You can delete it there.");
+    }
   }
 }
 

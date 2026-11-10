@@ -29,6 +29,15 @@ export function clubKey(club: string): string {
   return club.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+/** "Pizza, boba" from the words found, or "Food provided" when the club only ticked the box. */
+export function describeFood(event: FoodEvent): string {
+  if (event.foodMentions.length === 0) {
+    return "Food provided";
+  }
+  const list = event.foodMentions.join(", ");
+  return list.charAt(0).toUpperCase() + list.slice(1);
+}
+
 export interface EventsFile {
   /** The first day of saved events (the day the file was written), as YYYY-MM-DD in Champaign's time zone. */
   date: string;

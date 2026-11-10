@@ -2,10 +2,10 @@
 // (see supabase/001_accounts.sql), so nothing here has to be trusted to enforce that.
 
 import { createClient, type User } from "@supabase/supabase-js";
+import { googleClientId, loadGoogleScript } from "./googleScript.ts";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 /** Null when this copy of the site has no sign-in settings, e.g. a fresh clone without a .env.local file. */
 export const supabase = url && publishableKey && googleClientId ? createClient(url, publishableKey) : null;
@@ -43,23 +43,6 @@ export async function renderGoogleButton(container: HTMLElement, onSignIn: (erro
     },
   });
   google.accounts.id.renderButton(container, { theme: "outline", size: "large", text: "signin_with", shape: "rectangular" });
-}
-
-let googleScript: Promise<void> | undefined;
-
-function loadGoogleScript(): Promise<void> {
-  googleScript ??= new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
-      googleScript = undefined;
-      reject(new Error("Couldn't load Google sign-in"));
-    };
-    document.head.append(script);
-  });
-  return googleScript;
 }
 
 async function sha256Hex(text: string): Promise<string> {

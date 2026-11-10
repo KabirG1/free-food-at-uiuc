@@ -4,6 +4,7 @@ import { element } from "./dom.ts";
 import {
   CAMPUS_TIME_ZONE,
   campusDate,
+  describeFood,
   eventsNotEnded,
   eventsOnDate,
   splitByStarted,
@@ -223,13 +224,4 @@ function renderLocation(location: string): HTMLParagraphElement {
     paragraph.textContent = location;
   }
   return paragraph;
-}
-
-/** "Pizza, boba" from the words found, or "Food provided" when the club only ticked the box. */
-function describeFood(event: FoodEvent): string {
-  if (event.foodMentions.length === 0) {
-    return "Food provided";
-  }
-  const list = event.foodMentions.join(", ");
-  return list.charAt(0).toUpperCase() + list.slice(1);
 }
