@@ -20,6 +20,7 @@ export default defineConfig({
         following: page("following.html"),
         submit: page("submit.html"),
         review: page("review.html"),
+        search: page("search.html"),
         privacy: page("privacy.html"),
       },
     },

@@ -1,6 +1,7 @@
 // The parts shared by every page: the menu in the header, the account menu, the footer, and the contact email links.
 
 import { element } from "./dom.ts";
+import { MAX_QUERY_LENGTH } from "./search.ts";
 
 const PAGES = [
   { label: "Today", key: "" },
@@ -71,17 +72,52 @@ export function setUpPage(): void {
   }
 }
 
+// Fixed markup, so building it from a string is safe.
+const SEARCH_ICON_SVG = `<svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>`;
+
+/** A search box that opens the Search page with what was typed. `inputId` must be unique on the page. */
+export function renderSearchForm(inputId: string, className: string): HTMLFormElement {
+  const form = element("form", `relative font-body text-base font-normal ${className}`, "");
+  form.action = "./search.html";
+  form.method = "get";
+  form.setAttribute("role", "search");
+  const input = element("input", "block w-full rounded-sm border border-line bg-page py-2 pr-11 pl-3 text-ink placeholder:text-muted", "");
+  input.id = inputId;
+  input.type = "search";
+  input.name = "q";
+  input.placeholder = "Search events";
+  input.maxLength = MAX_QUERY_LENGTH;
+  input.autocomplete = "off";
+  input.enterKeyHint = "search";
+  // The browser asks for something to be typed instead of opening an empty search.
+  input.required = true;
+  input.setAttribute("aria-label", "Search events");
+  const button = element("button", "absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-muted hover:text-ink", "");
+  button.type = "submit";
+  button.setAttribute("aria-label", "Search");
+  button.innerHTML = SEARCH_ICON_SVG;
+  form.append(input, button);
+  return form;
+}
+
 /**
- * The header menu. Wider screens show the links in a row. Phones get a "Menu" button with three lines that
- * opens them as a list, so the row never wraps. The account control sits at the right on every screen.
+ * The header menu. Wider screens show the links in a row, then the search box. Phones get a "Menu" button with
+ * three lines that opens the search box and links as a list, so the row never wraps. The account control sits
+ * at the right on every screen. The Search page has its own box, so the header leaves it out there.
  */
 function renderNav(nav: HTMLElement, pathname: string): void {
   const items = navItems(pathname);
+  const showSearch = pageKey(pathname) !== "search";
   nav.className = "mt-3 flex flex-wrap items-center gap-x-5 font-display text-sm font-semibold";
 
   const menuList = element("ul", "basis-full border-t border-on-brand-muted/30 py-2 sm:hidden", "");
   menuList.id = "menu-list";
   menuList.hidden = true;
+  if (showSearch) {
+    const entry = element("li", "py-3", "");
+    entry.append(renderSearchForm("menu-search", ""));
+    menuList.append(entry);
+  }
   for (const item of items) {
     const entry = element("li", "", "");
     const link = renderNavLink(item);
@@ -100,8 +136,17 @@ function renderNav(nav: HTMLElement, pathname: string): void {
   });
 
   nav.replaceChildren(menuButton, ...rowLinks);
+  if (showSearch) {
+    // Pushed to the right, with the account control right after it.
+    nav.append(renderSearchForm("header-search", "ml-auto hidden w-48 sm:block"));
+  }
   if (import.meta.env.VITE_SUPABASE_URL) {
-    nav.append(renderAccountControl(["account", "saved", "following", "review"].includes(pageKey(pathname))));
+    const account = renderAccountControl(["account", "saved", "following", "review"].includes(pageKey(pathname)));
+    if (showSearch) {
+      // On wider screens the search box already takes up the space on the right.
+      account.classList.add("sm:ml-0");
+    }
+    nav.append(account);
   }
   nav.append(menuList);
 }
@@ -192,7 +237,7 @@ function renderAccountControl(current: boolean): HTMLElement {
     button.setAttribute("aria-label", `Account menu for ${firstName(user)}`);
     const initial = element("span", "flex size-9 items-center justify-center rounded-full bg-brand-accent font-bold text-brand", firstName(user).charAt(0).toUpperCase());
     initial.setAttribute("aria-hidden", "true");
-    const name = element("span", `hidden max-w-32 truncate sm:block ${current ? "text-on-brand" : "text-on-brand-muted"}`, firstName(user));
+    const name = element("span", `hidden max-w-32 truncate lg:block ${current ? "text-on-brand" : "text-on-brand-muted"}`, firstName(user));
     name.setAttribute("aria-hidden", "true");
     button.append(initial, name);
     wrapper.replaceChildren(button, panel);
