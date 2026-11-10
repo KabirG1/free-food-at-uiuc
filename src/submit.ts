@@ -15,7 +15,8 @@ import { describeWhen } from "./submissionView.ts";
 const content = document.querySelector<HTMLElement>("#content")!;
 
 const FIELD = "mt-1 block w-full rounded-sm border border-line bg-page px-3 py-2.5 text-ink aria-invalid:border-error";
-const PRIMARY_BUTTON = "mt-6 cursor-pointer rounded-sm bg-selected px-4 py-2.5 font-semibold text-on-selected disabled:opacity-60";
+const PRIMARY_BUTTON = "cursor-pointer rounded-sm bg-selected px-4 py-2.5 font-semibold text-on-selected disabled:opacity-60";
+const SECONDARY_BUTTON = "cursor-pointer rounded-sm border border-selected px-4 py-2.5 font-semibold";
 
 const EVENT_TYPES = ["Academic", "Athletic/Sports", "Community Service", "Cultural", "Dinner/Gala", "Educational/Awareness", "Fundraiser", "Meeting", "Social", "Workshop"];
 
@@ -68,6 +69,10 @@ function renderFlyerUpload(form: HTMLFormElement): HTMLElement {
     status,
   );
   section.children[2].append(button);
+  // Clearing the form also clears "Filled in from the flyer", which would no longer be true.
+  form.addEventListener("reset", () => {
+    status.textContent = "";
+  });
 
   fileInput.addEventListener("change", async () => {
     const file = fileInput.files?.[0];
@@ -189,6 +194,11 @@ function renderForm(user: User, mine: HTMLElement): HTMLFormElement {
   );
   const submitButton = element("button", PRIMARY_BUTTON, "Submit event");
   submitButton.type = "submit";
+  // Resetting puts every field back to how the page opened, so the date returns to today.
+  const clearButton = element("button", SECONDARY_BUTTON, "Clear form");
+  clearButton.type = "reset";
+  const buttons = element("div", "mt-6 flex flex-wrap gap-3", "");
+  buttons.append(submitButton, clearButton);
   const status = element("p", "mt-3", "");
   status.setAttribute("role", "status");
 
@@ -202,13 +212,20 @@ function renderForm(user: User, mine: HTMLElement): HTMLFormElement {
     labelled("food", "Food", input("text", { maxlength: "100" }), "Separate items with commas, such as pizza, cookies."),
     labelled("eventType", "Event type (optional)", eventTypeSelect()),
     labelled("url", "Link (optional)", input("url", { inputmode: "url", placeholder: "https://" }), "A flyer, Instagram post, or event page helps the admin confirm it."),
-    submitButton,
+    buttons,
     status,
   );
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     void handleSubmit(form, submitButton, status, user, mine);
+  });
+  form.addEventListener("reset", () => {
+    showProblems(form, {});
+  });
+  // Only the Clear button empties this message; a successful submit also resets the form but keeps its "Thanks!".
+  clearButton.addEventListener("click", () => {
+    status.textContent = "";
   });
   return form;
 }
