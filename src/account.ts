@@ -64,13 +64,13 @@ function signedIn(user: User): HTMLElement[] {
   const deleteStatus = element("p", "mt-3 text-error", "");
   deleteStatus.setAttribute("role", "status");
   deleteButton.addEventListener("click", async () => {
-    if (!window.confirm("Delete your account? Your name, email, and saved events will be removed. This can't be undone.")) {
+    if (!window.confirm("Delete your account? Your name, email, saved events, and followed clubs will be removed. This can't be undone.")) {
       return;
     }
     deleteButton.disabled = true;
     try {
       await deleteMyAccount();
-      content.replaceChildren(heading("Your account was deleted"), paragraph("Your name, email, and saved events have been removed."));
+      content.replaceChildren(heading("Your account was deleted"), paragraph("Your name, email, saved events, and followed clubs have been removed."));
     } catch {
       deleteButton.disabled = false;
       deleteStatus.textContent = "Couldn't delete your account. Check your connection and try again.";
@@ -83,7 +83,7 @@ function signedIn(user: User): HTMLElement[] {
     element("p", "text-muted", user.email ?? ""),
     signOutButton,
     element("h2", "mt-10 font-display text-lg font-bold", "Delete account"),
-    paragraph("Removes your name, email, and saved events from the site for good."),
+    paragraph("Removes your name, email, saved events, and followed clubs from the site for good."),
     deleteButton,
     deleteStatus,
     privacyNote(),
@@ -107,7 +107,7 @@ function paragraph(text: string): HTMLElement {
 }
 
 function privacyNote(): HTMLElement {
-  const note = element("p", "mt-10 text-sm text-muted", "We store only your name, email, and the events you save or submit. ");
+  const note = element("p", "mt-10 text-sm text-muted", "We store only your name, email, the events you save or submit, and the clubs you follow. ");
   const link = element("a", "underline decoration-line underline-offset-3 hover:decoration-current", "Privacy");
   link.href = "./privacy.html";
   note.append(link);

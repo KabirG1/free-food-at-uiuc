@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FoodEvent } from "../src/events.ts";
-import { campusMinutes, foodKinds, matchesFilters, NO_FILTERS, overlapsTimeRange, parseClockTime, TIME_PRESETS } from "../src/filters.ts";
+import { clubKey } from "../src/events.ts";
+import { activeFilterCount, campusMinutes, foodKinds, matchesFilters, NO_FILTERS, overlapsTimeRange, parseClockTime, TIME_PRESETS } from "../src/filters.ts";
 
 function event(start: string, end: string, foodMentions: string[] = [], eventType = "Meeting"): FoodEvent {
   return { id: start, source: "test", club: "Club", title: "Event", start, end, location: "Union", eventType, foodMentions, url: "" };
@@ -67,6 +68,31 @@ describe("matchesFilters", () => {
 
   it("keeps everything when no filters are on", () => {
     expect(matchesFilters(lateSnacks, NO_FILTERS)).toBe(true);
+  });
+});
+
+describe("clubs I follow filter", () => {
+  const chessNight = { ...event("2026-10-29T18:00:00-05:00", "2026-10-29T19:00:00-05:00"), club: "Chess  Club " };
+  const followingOnly = { ...NO_FILTERS, followedOnly: true };
+
+  it("shows events from a followed club, ignoring capitals and extra spaces in its name", () => {
+    expect(matchesFilters(chessNight, followingOnly, new Set([clubKey("chess club")]))).toBe(true);
+  });
+
+  it("hides events from clubs the student doesn't follow", () => {
+    expect(matchesFilters(chessNight, followingOnly, new Set([clubKey("Go Club")]))).toBe(false);
+  });
+
+  it("shows nothing when signed out, since no clubs are followed", () => {
+    expect(matchesFilters(chessNight, followingOnly)).toBe(false);
+  });
+
+  it("leaves every club in when the filter is off", () => {
+    expect(matchesFilters(chessNight, NO_FILTERS)).toBe(true);
+  });
+
+  it("counts as one active filter", () => {
+    expect(activeFilterCount(followingOnly)).toBe(1);
   });
 });
 

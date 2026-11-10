@@ -1,6 +1,6 @@
 // Narrowing the list by kind of food, time of day, and event type. Nothing here is saved between visits.
 
-import { CAMPUS_TIME_ZONE, type FoodEvent } from "./events.ts";
+import { CAMPUS_TIME_ZONE, clubKey, type FoodEvent } from "./events.ts";
 
 export type FoodKind = "meal" | "snack";
 
@@ -14,9 +14,11 @@ export interface Filters {
   food: FoodKind | null;
   time: TimeRange | null;
   eventType: string | null;
+  /** Only events from clubs the student follows. */
+  followedOnly: boolean;
 }
 
-export const NO_FILTERS: Filters = { food: null, time: null, eventType: null };
+export const NO_FILTERS: Filters = { food: null, time: null, eventType: null, followedOnly: false };
 
 export const TIME_PRESETS = {
   morning: { label: "Morning", range: { from: 0, to: 12 * 60 } },
@@ -64,16 +66,18 @@ export function overlapsTimeRange(event: FoodEvent, range: TimeRange): boolean {
   return start < range.to && end > range.from;
 }
 
-export function matchesFilters(event: FoodEvent, filters: Filters): boolean {
+/** `followedClubs` holds the followed clubs' `clubKey`s; it's empty when the student is signed out. */
+export function matchesFilters(event: FoodEvent, filters: Filters, followedClubs: ReadonlySet<string> = new Set()): boolean {
   return (
     (filters.food === null || foodKinds(event).has(filters.food)) &&
     (filters.time === null || overlapsTimeRange(event, filters.time)) &&
-    (filters.eventType === null || event.eventType === filters.eventType)
+    (filters.eventType === null || event.eventType === filters.eventType) &&
+    (!filters.followedOnly || followedClubs.has(clubKey(event.club)))
   );
 }
 
 export function activeFilterCount(filters: Filters): number {
-  return [filters.food, filters.time, filters.eventType].filter((value) => value !== null).length;
+  return [filters.food, filters.time, filters.eventType].filter((value) => value !== null).length + (filters.followedOnly ? 1 : 0);
 }
 
 /** "HH:MM" from a time input as minutes after midnight, or null if it isn't a valid time. */

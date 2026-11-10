@@ -4,6 +4,7 @@ import { element } from "./dom.ts";
 import { CAMPUS_TIME_ZONE, campusDate, coveredDates, datesInMonth, eventsOnDate, pickDate, type EventsFile, type FoodEvent } from "./events.ts";
 import { eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
 import { renderFilterPanel } from "./filterPanel.ts";
+import { followedClubKeys, onFollowedClubsChange } from "./followedClubs.ts";
 import { activeFilterCount, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
 import { setUpPage } from "./layout.ts";
 
@@ -39,6 +40,12 @@ async function start(): Promise<void> {
     render();
   });
   content.replaceChildren(panel, results);
+  // With "Clubs I follow" on, following or unfollowing a club changes which events match.
+  onFollowedClubsChange(() => {
+    if (filters.followedOnly) {
+      render();
+    }
+  });
   showDayFromAddress();
   window.addEventListener("popstate", showDayFromAddress);
 }
@@ -62,7 +69,8 @@ function render(): void {
   const today = campusDate(now);
   const dates = coveredDates(today);
   const selected = selectedDate(dates);
-  const events = data.events.filter((event) => matchesFilters(event, filters));
+  const followed = followedClubKeys();
+  const events = data.events.filter((event) => matchesFilters(event, filters, followed));
 
   const heading = element("h1", "mt-8 font-display text-xl leading-tight font-bold", formatDay(selected));
   const dayColumn = element("div", "", "");

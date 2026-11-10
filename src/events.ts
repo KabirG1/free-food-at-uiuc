@@ -24,6 +24,11 @@ export function isEventLink(url: unknown): boolean {
   return typeof url === "string" && (url === "" || url.startsWith("https://"));
 }
 
+/** A club's name for matching: capitals and extra spaces ignored, so "Chess  Club" and "chess club" are one club. */
+export function clubKey(club: string): string {
+  return club.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export interface EventsFile {
   /** The first day of saved events (the day the file was written), as YYYY-MM-DD in Champaign's time zone. */
   date: string;

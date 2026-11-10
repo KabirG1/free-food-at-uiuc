@@ -13,6 +13,7 @@ import {
   renderSourceWarning,
 } from "./eventList.ts";
 import { renderFilterPanel } from "./filterPanel.ts";
+import { followedClubKeys, onFollowedClubsChange } from "./followedClubs.ts";
 import { activeFilterCount, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
 import { setUpPage } from "./layout.ts";
 
@@ -36,13 +37,25 @@ async function showToday(): Promise<void> {
   updated.textContent = lastCheckedText(data);
 
   const results = element("div", "", "");
-  const showResults = (filters: Filters) => renderResults(results, data, filters, today, now);
-  content.replaceChildren(renderFilterPanel(eventTypesIn(data.events), showResults), results);
-  showResults(NO_FILTERS);
+  let filters = NO_FILTERS;
+  const showResults = () => renderResults(results, data, filters, today, now);
+  const panel = renderFilterPanel(eventTypesIn(data.events), (newFilters) => {
+    filters = newFilters;
+    showResults();
+  });
+  content.replaceChildren(panel, results);
+  // With "Clubs I follow" on, following or unfollowing a club changes which events match.
+  onFollowedClubsChange(() => {
+    if (filters.followedOnly) {
+      showResults();
+    }
+  });
+  showResults();
 }
 
 function renderResults(results: HTMLElement, data: EventsFile, filters: Filters, today: string, now: Date): void {
-  const events = data.events.filter((event) => matchesFilters(event, filters));
+  const followed = followedClubKeys();
+  const events = data.events.filter((event) => matchesFilters(event, filters, followed));
   // On wide screens today's list and "Coming up" sit side by side; on phones they stack.
   const todayColumn = element("div", "", "");
   todayColumn.append(...renderDay(eventsOnDate(events, today), today, now, activeFilterCount(filters) > 0));

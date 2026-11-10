@@ -101,7 +101,7 @@ function renderNav(nav: HTMLElement, pathname: string): void {
 
   nav.replaceChildren(menuButton, ...rowLinks);
   if (import.meta.env.VITE_SUPABASE_URL) {
-    nav.append(renderAccountControl(["account", "saved", "review"].includes(pageKey(pathname))));
+    nav.append(renderAccountControl(["account", "saved", "following", "review"].includes(pageKey(pathname))));
   }
   nav.append(menuList);
 }
@@ -142,7 +142,7 @@ function renderToggle(panel: HTMLElement, className: string, closeOnOutsideClick
 
 /**
  * "Sign in" at the right of the menu. Once signed in, it becomes a round button with the student's initial
- * that opens their account menu: saved events, account settings, and sign out.
+ * that opens their account menu: saved events, followed clubs, account settings, and sign out.
  */
 function renderAccountControl(current: boolean): HTMLElement {
   const wrapper = element("div", "relative ml-auto", "");
@@ -162,6 +162,8 @@ function renderAccountControl(current: boolean): HTMLElement {
     const menuItem = "block w-full cursor-pointer px-4 py-3 text-left hover:bg-line";
     const savedLink = element("a", menuItem, "Saved events");
     savedLink.href = pageHref("saved");
+    const followingLink = element("a", menuItem, "Following");
+    followingLink.href = pageHref("following");
     const settingsLink = element("a", menuItem, "Account settings");
     settingsLink.href = pageHref("account");
     const signOutButton = element("button", `${menuItem} border-t border-line`, "Sign out");
@@ -172,7 +174,7 @@ function renderAccountControl(current: boolean): HTMLElement {
       await signOut();
       window.location.reload();
     });
-    panel.append(who, savedLink, settingsLink, signOutButton);
+    panel.append(who, savedLink, followingLink, settingsLink, signOutButton);
 
     // Only admins get this link, with how many events are waiting. If the check fails, the menu just goes without it.
     void import("./submissions.ts")
@@ -181,7 +183,7 @@ function renderAccountControl(current: boolean): HTMLElement {
         if (pending !== null) {
           const reviewLink = element("a", menuItem, `Review submissions (${pending})`);
           reviewLink.href = pageHref("review");
-          savedLink.after(reviewLink);
+          followingLink.after(reviewLink);
         }
       })
       .catch(() => undefined);

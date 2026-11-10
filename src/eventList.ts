@@ -11,6 +11,7 @@ import {
   type EventsFile,
   type FoodEvent,
 } from "./events.ts";
+import { renderFollowButton } from "./followButton.ts";
 import { isPrivateLocation, mapLink } from "./location.ts";
 import { renderSaveButton, savingAvailable } from "./saveButton.ts";
 
@@ -169,7 +170,7 @@ function renderEvent(event: FoodEvent, { ended = false, notListed }: ListOptions
   const details = element("div", "min-w-0", "");
   details.append(
     renderTitle(event),
-    element("p", "mt-1 text-muted", event.club),
+    renderClub(event.club),
     renderLocation(event.location),
     element("p", "mt-2 font-semibold text-food", describeFood(event)),
   );
@@ -182,6 +183,16 @@ function renderEvent(event: FoodEvent, { ended = false, notListed }: ListOptions
     item.append(renderSaveButton(event));
   }
   return item;
+}
+
+/** The hosting club, with a Follow button when accounts are set up. */
+function renderClub(club: string): HTMLElement {
+  if (!savingAvailable || club.trim() === "") {
+    return element("p", "mt-1 text-muted", club);
+  }
+  const line = element("div", "mt-1 flex flex-wrap items-center gap-x-3 gap-y-1", "");
+  line.append(element("p", "text-muted", club), renderFollowButton(club));
+  return line;
 }
 
 /** The event's name, linked to its page. Submitted events may have no page, so the name is plain text. */

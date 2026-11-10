@@ -1,5 +1,6 @@
 // The "Filters" dropdown shown above the event list on the Today and Calendar pages.
 
+import { savingAvailable } from "./saveButton.ts";
 import { activeFilterCount, NO_FILTERS, parseClockTime, TIME_PRESETS, type Filters, type FoodKind } from "./filters.ts";
 
 const PILL =
@@ -7,17 +8,27 @@ const PILL =
 const FIELD = "rounded-sm border border-line bg-page px-3 py-2 text-ink";
 const LEGEND = "font-display text-sm font-bold tracking-wide text-muted uppercase";
 
+// Only on copies of the site with accounts, since following a club needs one.
+const CLUBS_FIELDSET = `
+      <fieldset class="mt-5 lg:mt-0">
+        <legend class="${LEGEND}">Clubs</legend>
+        <div class="mt-2 flex flex-wrap gap-2">
+          ${pill("clubs", "", "All clubs", true)}${pill("clubs", "following", "Clubs I follow")}
+        </div>
+        <p data-clubs-hint hidden class="mt-2 text-sm text-muted">Tap Follow next to a club's name to add it. Following clubs needs you to be signed in.</p>
+      </fieldset>`;
+
 /** Builds the panel. `onChange` runs with the new filters whenever a choice changes. */
 export function renderFilterPanel(eventTypes: string[], onChange: (filters: Filters) => void): HTMLElement {
   const panel = document.createElement("details");
   panel.className = "mt-6 border-y border-line";
-  // On wide screens the three choices sit side by side. The fixed markup is written here; event types come from the listings, so they're added as text below.
+  // On wide screens the choices sit side by side. The fixed markup is written here; event types come from the listings, so they're added as text below.
   panel.innerHTML = `
     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-3">
       <span class="font-display font-bold">Filters<span data-count class="text-food"></span></span>
       <span aria-hidden="true" class="chevron shrink-0 text-muted"></span>
     </summary>
-    <form class="pb-5 lg:grid lg:grid-cols-3 lg:gap-x-12">
+    <form class="pb-5 lg:grid ${savingAvailable ? "lg:grid-cols-4" : "lg:grid-cols-3"} lg:gap-x-12">
       <fieldset>
         <legend class="${LEGEND}">Food</legend>
         <div class="mt-2 flex flex-wrap gap-2">
@@ -48,7 +59,8 @@ export function renderFilterPanel(eventTypes: string[], onChange: (filters: Filt
           <option value="">All event types</option>
         </select>
       </div>
-      <button type="reset" class="mt-5 justify-self-start lg:col-span-3 font-semibold underline decoration-line underline-offset-3 hover:decoration-current">Clear filters</button>
+      ${savingAvailable ? CLUBS_FIELDSET : ""}
+      <button type="reset" class="mt-5 justify-self-start lg:col-span-full font-semibold underline decoration-line underline-offset-3 hover:decoration-current">Clear filters</button>
     </form>`;
 
   const form = panel.querySelector("form")!;
@@ -68,6 +80,7 @@ export function renderFilterPanel(eventTypes: string[], onChange: (filters: Filt
     hint.className = `mt-2 text-sm ${customProblem ? "text-error" : "text-muted"}`;
     const count = activeFilterCount(filters);
     panel.querySelector<HTMLElement>("[data-count]")!.textContent = count > 0 ? ` · ${count}` : "";
+    panel.querySelector<HTMLElement>("[data-clubs-hint]")?.toggleAttribute("hidden", !filters.followedOnly);
     onChange(filters);
   };
   form.addEventListener("input", update);
@@ -84,6 +97,7 @@ function readFilters(form: HTMLFormElement): { filters: Filters; customChosen: b
   const data = new FormData(form);
   const food = (data.get("food") || null) as FoodKind | null;
   const eventType = (data.get("eventType") as string) || null;
+  const followedOnly = data.get("clubs") === "following";
   const timeChoice = data.get("time") as string;
 
   let time: Filters["time"] = null;
@@ -101,5 +115,5 @@ function readFilters(form: HTMLFormElement): { filters: Filters; customChosen: b
   } else if (timeChoice in TIME_PRESETS) {
     time = TIME_PRESETS[timeChoice as keyof typeof TIME_PRESETS].range;
   }
-  return { filters: { ...NO_FILTERS, food, time, eventType }, customChosen: timeChoice === "custom", customProblem };
+  return { filters: { ...NO_FILTERS, food, time, eventType, followedOnly }, customChosen: timeChoice === "custom", customProblem };
 }
