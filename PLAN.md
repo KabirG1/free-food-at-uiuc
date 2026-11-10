@@ -22,15 +22,15 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-11-06: Submit events and admin review (accounts phase D, form half).** Signed-in students submit an event on a Submit page and see its status there. Admins, listed by email in the database, get a "Review submissions (count)" link in their account menu and a page to approve, reject, or take an event back off the site. The scheduled fetch adds approved events as a second source. Ended events drop off the review page right away and are deleted a week later (`supabase/003_submissions.sql`). Kabir tried it locally: submitted an event, approved it, ran the fetch, and saw it on Today.
 - **2026-11-09: Flyer upload fills in the Submit form (accounts phase D done).** Kabir ran `supabase/004_flyer_reads.sql`, added the `GEMINI_API_KEY` secret, and deployed the `read-flyer` Edge Function. Uploading a flyer on the Submit page fills in the form for the student to check; nothing is submitted automatically. Kabir tried it and confirmed the upload works.
 - **2026-11-09: Clear form button on Submit (Kabir's request).** Empties every field, puts the date back to today, and removes red marks and the flyer message. It clears without an "Are you sure?" popup (Claude's choice, open to overruling). Kabir tried it after a flyer upload.
+- **2026-11-09: Site redesign reviewed.** The "not vibe coded" rebuild (Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps). Kabir checked the phone version and said it looks good.
 
 ## Next
 
-1. **Make the site look good (in progress, waiting on Kabir to review).** Rebuilt after researching what makes sites look "vibe coded" (see Decisions): Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps.
-2. **Accounts and sign-in, in phases** (see Decisions, 2026-10-29). Each phase is tried by Kabir before the next starts.
+1. **Accounts and sign-in, in phases** (see Decisions, 2026-10-29). Each phase is tried by Kabir before the next starts.
    - **C. Follow clubs and preferences.** Follow clubs; remember filter choices. Moved after D (see Decisions, 2026-11-06).
    - **E. Notifications.** Emails about food from followed clubs or soon nearby (needs an email service, e.g. Resend's free tier).
    - **F. Google Calendar sync (Kabir, 2026-11-02).** An option on the Account page to connect Google Calendar. Once connected, starring an event adds it to the student's Google Calendar, and removing the star removes it. Optional, off by default. To work out before building: calendar access is a "sensitive" Google permission, so the published app may need Google's verification review; each saved event needs to remember its Google Calendar event so un-starring can delete the right one; and events starred before connecting may need a one-time "add my saved events" step.
-3. **Research how websites look overall** (Kabir, 2026-10-30), to guide later design work beyond the earlier "not vibe coded" pass.
+2. **Research how websites look overall** (Kabir, 2026-10-30), to guide later design work beyond the earlier "not vibe coded" pass.
 
 **Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
 - **Upload a flyer to add an event.** Done as part of accounts phase D (2026-11-09).
