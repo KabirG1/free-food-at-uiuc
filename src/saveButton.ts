@@ -3,7 +3,13 @@
 
 import { element } from "./dom.ts";
 import type { FoodEvent } from "./events.ts";
-import { calendarAccessForTap, loadCalendarConnection, prepareCalendarAccess, syncSavedEvent } from "./googleCalendar.ts";
+import {
+  calendarAccessForTap,
+  loadCalendarConnection,
+  prepareCalendarAccess,
+  syncSavedEvent,
+  updateChangedEventsQuietly,
+} from "./googleCalendar.ts";
 import { showNotice } from "./notice.ts";
 
 const savedIds = new Set<string>();
@@ -86,8 +92,12 @@ async function toggleSaved(event: FoodEvent): Promise<void> {
   }
 
   try {
-    if ((await syncSavedEvent(calendar, event, saving)) && saving) {
-      showNotice("Saved and added to Google Calendar.", { label: "See saved events", href: "./saved.html" });
+    if (await syncSavedEvent(calendar, event, saving)) {
+      if (saving) {
+        showNotice("Saved and added to Google Calendar.", { label: "See saved events", href: "./saved.html" });
+      }
+      // While Google's access is at hand, bring any other changed events up to date too.
+      void updateChangedEventsQuietly(calendar);
     }
   } catch {
     // The save itself worked, so the star stays as it is. The Account page can add missing events again.

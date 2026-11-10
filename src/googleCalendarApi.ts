@@ -43,10 +43,14 @@ export function googleEventId(eventId: string): string {
   return `ff${hex}`;
 }
 
-/** What goes into Google Calendar for `event`. Google treats it as plain text, so scraped text can't add links or markup. */
-export function googleEventBody(event: FoodEvent): Record<string, unknown> {
+/**
+ * What goes into Google Calendar for `event`. Google treats it as plain text, so scraped text can't add links
+ * or markup. `maybeCancelled` marks an event that disappeared from the listings before it ended.
+ */
+export function googleEventBody(event: FoodEvent, maybeCancelled = false): Record<string, unknown> {
   const privateLocation = isPrivateLocation(event.location);
   const details = [
+    maybeCancelled ? "No longer listed, so it may be cancelled." : "",
     event.club.trim() === "" ? "" : `Hosted by ${event.club}`,
     `Food: ${describeFood(event)}`,
     privateLocation ? "Location: shown after signing in to OneIllinois" : "",
@@ -55,7 +59,7 @@ export function googleEventBody(event: FoodEvent): Record<string, unknown> {
   const footer = `Added by ${CALENDAR_NAME} because you saved it. Unsave it on the site to remove it.`;
   return {
     id: googleEventId(event.id),
-    summary: event.title,
+    summary: maybeCancelled ? `May be cancelled: ${event.title}` : event.title,
     ...(privateLocation || event.location.trim() === "" ? {} : { location: event.location }),
     description: `${details.join("\n")}\n\n${footer}`,
     start: { dateTime: event.start },
@@ -103,12 +107,13 @@ export async function deleteCalendar(token: string, calendarId: string): Promise
   }
 }
 
-export async function addCalendarEvent(token: string, calendarId: string, event: FoodEvent): Promise<void> {
-  const body = googleEventBody(event);
+/** Adds the event to the calendar, or brings its copy there up to date if it's already in it. */
+export async function addCalendarEvent(token: string, calendarId: string, event: FoodEvent, maybeCancelled = false): Promise<void> {
+  const body = googleEventBody(event, maybeCancelled);
   const events = `/calendars/${encodeURIComponent(calendarId)}/events`;
   let response = await callApi(token, "POST", events, body);
   if (response.status === 409) {
-    // Google keeps a deleted event's ID, so saving an event again after unsaving it updates the old one back.
+    // The ID is taken: the event is already there, or was deleted (Google keeps deleted IDs), so update it in place.
     response = await callApi(token, "PUT", `${events}/${body.id}`, body);
   }
   if (!response.ok) {

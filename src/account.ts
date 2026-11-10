@@ -7,13 +7,14 @@ import { loadEventsFile } from "./eventList.ts";
 import { savedEventsToShow, type FoodEvent } from "./events.ts";
 import {
   addSavedEventsAgain,
+  calendarErrorMessage,
   connectCalendar,
   disconnectCalendar,
   loadCalendarConnection,
   prepareCalendarAccess,
   requestCalendarAccess,
 } from "./googleCalendar.ts";
-import { CALENDAR_NAME, CalendarApiError } from "./googleCalendarApi.ts";
+import { CALENDAR_NAME } from "./googleCalendarApi.ts";
 import { setUpPage } from "./layout.ts";
 import { loadSavedEvents } from "./savedEvents.ts";
 
@@ -152,7 +153,7 @@ function calendarSection(): HTMLElement {
 
   // Turning off deletes the calendar, so it asks first, on the page: a browser popup could use up the tap
   // Google's window needs to open.
-  const confirmBox = element("div", "mt-4 border-l-4 border-error pl-4", "");
+  const confirmBox = element("div", "mt-4 border-y border-line py-4", "");
   confirmBox.hidden = true;
   const confirmButton = element("button", `cursor-pointer ${DANGER_BUTTON}`, "Delete calendar and turn off");
   confirmButton.type = "button";
@@ -260,22 +261,6 @@ async function upcomingSavedEvents(): Promise<FoodEvent[]> {
 
 function countText(count: number): string {
   return `${count} ${count === 1 ? "event" : "events"}`;
-}
-
-function calendarErrorMessage(error: unknown, start: string): string {
-  const reason = error instanceof Error ? error.message : "";
-  if (reason === "popup_closed" || reason === "access_denied") {
-    return `${start} Google's window closed before access was allowed. If Google said the app is blocked, your Illinois account doesn't allow it.`;
-  }
-  if (reason === "popup_failed_to_open") {
-    return `${start} Your browser blocked Google's window. Allow pop-ups for this site and try again.`;
-  }
-  if (error instanceof CalendarApiError && (error.status === 401 || error.status === 403)) {
-    // Google's reason, as plain text, so the cause (such as the Calendar API being turned off) can be fixed.
-    return `${start} Google didn't accept the site's access. Try again, and allow access if Google asks.${error.reason === "" ? "" : ` (Google said: ${error.reason})`}`;
-  }
-  // The technical reason, so a problem can be reported and fixed. Shown as plain text, never as HTML.
-  return `${start} Check your connection and try again.${reason === "" ? "" : ` (Details: ${reason})`}`;
 }
 
 function statusClass(kind: "success" | "error"): string {

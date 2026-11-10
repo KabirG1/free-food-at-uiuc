@@ -3,6 +3,7 @@
 // browser tab; nothing that unlocks a student's calendar is stored on our side. The account code is loaded only
 // when needed, so the star button can use this without slowing down the event list.
 
+import { calendarChanges, type CalendarChange } from "./calendarChanges.ts";
 import type { FoodEvent } from "./events.ts";
 import {
   addCalendarEvent,
@@ -175,6 +176,53 @@ export async function syncSavedEvent(access: Promise<CalendarAccess | null>, eve
       forgetAccess();
     }
     throw error;
+  }
+}
+
+/** What to tell the student when something with Google Calendar failed. `start` says what didn't work. */
+export function calendarErrorMessage(error: unknown, start: string): string {
+  const reason = error instanceof Error ? error.message : "";
+  if (reason === "popup_closed" || reason === "access_denied") {
+    return `${start} Google's window closed before access was allowed. If Google said the app is blocked, your Illinois account doesn't allow it.`;
+  }
+  if (reason === "popup_failed_to_open") {
+    return `${start} Your browser blocked Google's window. Allow pop-ups for this site and try again.`;
+  }
+  if (error instanceof CalendarApiError && (error.status === 401 || error.status === 403)) {
+    // Google's reason, as plain text, so the cause (such as the Calendar API being turned off) can be fixed.
+    return `${start} Google didn't accept the site's access. Try again, and allow access if Google asks.${error.reason === "" ? "" : ` (Google said: ${error.reason})`}`;
+  }
+  // The technical reason, so a problem can be reported and fixed. Shown as plain text, never as HTML.
+  return `${start} Check your connection and try again.${reason === "" ? "" : ` (Details: ${reason})`}`;
+}
+
+/** Brings the calendar copies of `changes` up to date, then stores the latest copies so they aren't reported again. */
+export async function updateCalendarChanges(calendar: CalendarAccess, changes: CalendarChange[]): Promise<void> {
+  const { updateSavedCopy } = await import("./savedEvents.ts");
+  // One at a time, to stay well inside Google's limits.
+  for (const change of changes) {
+    await addCalendarEvent(calendar.token, calendar.calendarId, change.event, change.maybeCancelled);
+    await updateSavedCopy(change.event, change.maybeCancelled);
+  }
+}
+
+/**
+ * After a star tap that already has Google's access: fixes any other saved events that changed. Failures are
+ * left quiet, since the tap itself worked and the Saved page offers the update again.
+ */
+export async function updateChangedEventsQuietly(access: Promise<CalendarAccess | null>): Promise<void> {
+  try {
+    const calendar = await access;
+    if (calendar === null) {
+      return;
+    }
+    const [{ loadSavedRecords }, { loadEventsFile }] = await Promise.all([import("./savedEvents.ts"), import("./eventList.ts")]);
+    const saved = await loadSavedRecords();
+    if (saved !== null) {
+      await updateCalendarChanges(calendar, calendarChanges(saved, await loadEventsFile(), new Date()));
+    }
+  } catch {
+    // Offered again on the Saved page.
   }
 }
 
