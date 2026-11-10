@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FoodEvent } from "../src/events.ts";
 import { clubKey } from "../src/events.ts";
-import { activeFilterCount, campusMinutes, foodKinds, matchesFilters, NO_FILTERS, overlapsTimeRange, parseClockTime, TIME_PRESETS } from "../src/filters.ts";
+import { activeFilterCount, campusMinutes, clubsIn, matchingClubs, foodKinds, matchesFilters, NO_FILTERS, overlapsTimeRange, parseClockTime, TIME_PRESETS } from "../src/filters.ts";
 
 function event(start: string, end: string, foodMentions: string[] = [], eventType = "Meeting"): FoodEvent {
   return { id: start, source: "test", club: "Club", title: "Event", start, end, location: "Union", eventType, foodMentions, url: "" };
@@ -93,6 +93,35 @@ describe("clubs I follow filter", () => {
 
   it("counts as one active filter", () => {
     expect(activeFilterCount(followingOnly)).toBe(1);
+  });
+});
+
+describe("club name filter", () => {
+  const chessNight = { ...event("2026-10-29T18:00:00-05:00", "2026-10-29T19:00:00-05:00"), club: "Illini Chess Club" };
+
+  it("shows events whose club name contains what was typed, ignoring capitals and spaces", () => {
+    expect(matchesFilters(chessNight, { ...NO_FILTERS, club: clubKey("  CHESS ") })).toBe(true);
+  });
+
+  it("hides events from other clubs", () => {
+    expect(matchesFilters(chessNight, { ...NO_FILTERS, club: clubKey("go club") })).toBe(false);
+  });
+
+  it("suggests clubs starting with what was typed before ones that only contain it", () => {
+    const clubs = ["Illini Chess Club", "Chess Club", "Go Club"];
+    expect(matchingClubs(clubs, "CHESS")).toEqual(["Chess Club", "Illini Chess Club"]);
+  });
+
+  it("suggests nothing for an empty box, and at most eight clubs", () => {
+    const clubs = Array.from({ length: 12 }, (_, index) => `Club ${index}`);
+    expect(matchingClubs(clubs, "  ")).toEqual([]);
+    expect(matchingClubs(clubs, "club")).toHaveLength(8);
+  });
+
+  it("suggests each club once, alphabetically", () => {
+    const go = { ...chessNight, club: "Go Club" };
+    const chessAgain = { ...chessNight, club: "illini  chess club" };
+    expect(clubsIn([go, chessNight, chessAgain])).toEqual(["Go Club", "Illini Chess Club"]);
   });
 });
 

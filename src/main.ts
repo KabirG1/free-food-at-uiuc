@@ -12,9 +12,9 @@ import {
   renderMessage,
   renderSourceWarning,
 } from "./eventList.ts";
-import { renderFilterPanel } from "./filterPanel.ts";
+import { renderFilterPanel, takeClubFromAddress } from "./filterPanel.ts";
 import { followedClubKeys, onFollowedClubsChange } from "./followedClubs.ts";
-import { activeFilterCount, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
+import { activeFilterCount, clubsIn, eventTypesIn, matchesFilters, type Filters } from "./filters.ts";
 import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
@@ -37,12 +37,12 @@ async function showToday(): Promise<void> {
   updated.textContent = lastCheckedText(data);
 
   const results = element("div", "", "");
-  let filters = NO_FILTERS;
   const showResults = () => renderResults(results, data, filters, today, now);
-  const panel = renderFilterPanel(eventTypesIn(data.events), (newFilters) => {
+  const { panel, filters: startingFilters } = renderFilterPanel(eventTypesIn(data.events), clubsIn(data.events), takeClubFromAddress(), (newFilters) => {
     filters = newFilters;
     showResults();
   });
+  let filters = startingFilters;
   content.replaceChildren(panel, results);
   // With "Clubs I follow" on, following or unfollowing a club changes which events match.
   onFollowedClubsChange(() => {

@@ -1,4 +1,5 @@
-// The Following page: the clubs a signed-in student follows, each with an Unfollow button.
+// The Following page: the clubs a signed-in student follows. Each name opens Today showing only that club's
+// events, and each has an Unfollow button.
 
 import { supabase } from "./auth.ts";
 import { element } from "./dom.ts";
@@ -33,7 +34,12 @@ async function showFollowing(): Promise<void> {
   const status = element("p", "mt-3 text-error", "");
   status.setAttribute("role", "status");
   const list = element("div", "", "");
-  content.replaceChildren(element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Following"), list, status);
+  content.replaceChildren(
+    element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Following"),
+    element("p", "mt-2 text-muted", "Tap a club to see its events."),
+    list,
+    status,
+  );
   const showList = () => list.replaceChildren(...renderClubs(status));
   onFollowedClubsChange(showList);
   showList();
@@ -60,7 +66,10 @@ function renderClubs(status: HTMLElement): HTMLElement[] {
       }
     });
     const item = element("li", "flex items-center justify-between gap-4 py-3", "");
-    item.append(element("span", "min-w-0 font-semibold", name), unfollowButton);
+    // Opens Today with the Club filter set to this club.
+    const clubLink = element("a", "min-w-0 font-semibold underline decoration-line underline-offset-3 hover:decoration-current", name);
+    clubLink.href = `./?${new URLSearchParams({ club: name })}`;
+    item.append(clubLink, unfollowButton);
     items.append(item);
   }
   return [items];

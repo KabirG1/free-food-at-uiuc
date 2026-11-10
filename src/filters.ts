@@ -14,11 +14,13 @@ export interface Filters {
   food: FoodKind | null;
   time: TimeRange | null;
   eventType: string | null;
+  /** Part of a club's name, as a `clubKey`; events whose club name contains it match. */
+  club: string | null;
   /** Only events from clubs the student follows. */
   followedOnly: boolean;
 }
 
-export const NO_FILTERS: Filters = { food: null, time: null, eventType: null, followedOnly: false };
+export const NO_FILTERS: Filters = { food: null, time: null, eventType: null, club: null, followedOnly: false };
 
 export const TIME_PRESETS = {
   morning: { label: "Morning", range: { from: 0, to: 12 * 60 } },
@@ -72,12 +74,13 @@ export function matchesFilters(event: FoodEvent, filters: Filters, followedClubs
     (filters.food === null || foodKinds(event).has(filters.food)) &&
     (filters.time === null || overlapsTimeRange(event, filters.time)) &&
     (filters.eventType === null || event.eventType === filters.eventType) &&
+    (filters.club === null || clubKey(event.club).includes(filters.club)) &&
     (!filters.followedOnly || followedClubs.has(clubKey(event.club)))
   );
 }
 
 export function activeFilterCount(filters: Filters): number {
-  return [filters.food, filters.time, filters.eventType].filter((value) => value !== null).length + (filters.followedOnly ? 1 : 0);
+  return [filters.food, filters.time, filters.eventType, filters.club].filter((value) => value !== null).length + (filters.followedOnly ? 1 : 0);
 }
 
 /** "HH:MM" from a time input as minutes after midnight, or null if it isn't a valid time. */
@@ -89,4 +92,30 @@ export function parseClockTime(value: string): number | null {
 /** The distinct event types among `events`, alphabetically, for the event type menu. */
 export function eventTypesIn(events: FoodEvent[]): string[] {
   return [...new Set(events.map((event) => event.eventType).filter((type) => type !== ""))].sort();
+}
+
+/** Each club among `events` once, alphabetically, for the club suggestions. Names differing only in capitals or spacing count once. */
+export function clubsIn(events: FoodEvent[]): string[] {
+  const names = new Map<string, string>();
+  for (const event of events) {
+    const key = clubKey(event.club);
+    if (key !== "" && !names.has(key)) {
+      names.set(key, event.club.trim());
+    }
+  }
+  return [...names.values()].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Up to `limit` of `clubs` whose names contain `typed`, ignoring capitals and spaces. Names that start with it
+ * come first, so "chess" suggests "Chess Club" before "Illini Chess Club". Nothing is suggested for an empty box.
+ */
+export function matchingClubs(clubs: string[], typed: string, limit = 8): string[] {
+  const wanted = clubKey(typed);
+  if (wanted === "") {
+    return [];
+  }
+  const matches = clubs.filter((club) => clubKey(club).includes(wanted));
+  const startsWith = matches.filter((club) => clubKey(club).startsWith(wanted));
+  return [...startsWith, ...matches.filter((club) => !startsWith.includes(club))].slice(0, limit);
 }

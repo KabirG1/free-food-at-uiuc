@@ -3,9 +3,9 @@
 import { element } from "./dom.ts";
 import { CAMPUS_TIME_ZONE, campusDate, coveredDates, datesInMonth, eventsOnDate, pickDate, type EventsFile, type FoodEvent } from "./events.ts";
 import { eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
-import { renderFilterPanel } from "./filterPanel.ts";
+import { renderFilterPanel, takeClubFromAddress } from "./filterPanel.ts";
 import { followedClubKeys, onFollowedClubsChange } from "./followedClubs.ts";
-import { activeFilterCount, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
+import { activeFilterCount, clubsIn, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
 import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
@@ -35,10 +35,11 @@ async function start(): Promise<void> {
     return;
   }
   updated.textContent = lastCheckedText(data);
-  const panel = renderFilterPanel(eventTypesIn(data.events), (newFilters) => {
+  const { panel, filters: startingFilters } = renderFilterPanel(eventTypesIn(data.events), clubsIn(data.events), takeClubFromAddress(), (newFilters) => {
     filters = newFilters;
     render();
   });
+  filters = startingFilters;
   content.replaceChildren(panel, results);
   // With "Clubs I follow" on, following or unfollowing a club changes which events match.
   onFollowedClubsChange(() => {

@@ -24,6 +24,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-11-09: Clear form button on Submit (Kabir's request).** Empties every field, puts the date back to today, and removes red marks and the flyer message. It clears without an "Are you sure?" popup (Claude's choice, open to overruling). Kabir tried it after a flyer upload.
 - **2026-11-09: Site redesign reviewed.** The "not vibe coded" rebuild (Illinois colors and fonts, schedule-style list grouped into "Happening now" and "Later today", no emoji, no shadows or card boxes, neutral wording, locations open in Google Maps). Kabir checked the phone version and said it looks good.
 - **2026-11-09: Follow clubs (accounts phase C).** A Follow button after each club name (it turns into a filled-in "Following"), a "Clubs I follow" choice in Filters, and a Following page in the profile menu listing followed clubs with Unfollow buttons (`supabase/005_followed_clubs.sql`). Kabir ran the SQL and tried it.
+- **2026-11-09: Club filter and club links.** Filters has a Club box: typing part of a name shows up to 8 matching clubs from the listings (names starting with it first), and the list narrows to clubs whose names contain it. Each club on the Following page links to Today with that club already in the box (Filters stays closed, showing "Filters · 1"). Kabir tried both, on laptop and phone width.
 
 ## Next
 
@@ -31,6 +32,8 @@ A web app for UIUC students that shows which clubs are giving out free food at t
    - **E. Notifications.** Emails about food from followed clubs or soon nearby (needs an email service, e.g. Resend's free tier).
    - **F. Google Calendar sync (Kabir, 2026-11-02).** An option on the Account page to connect Google Calendar. Once connected, starring an event adds it to the student's Google Calendar, and removing the star removes it. Optional, off by default. To work out before building: calendar access is a "sensitive" Google permission, so the published app may need Google's verification review; each saved event needs to remember its Google Calendar event so un-starring can delete the right one; and events starred before connecting may need a one-time "add my saved events" step.
 2. **Research how websites look overall** (Kabir, 2026-10-30), to guide later design work beyond the earlier "not vibe coded" pass.
+3. **Site search (Kabir, 2026-11-09, to plan later).** A search box for events, either only on the Today page or at the top of every page. Not yet decided which, or what it searches.
+4. **Club registration (Kabir, 2026-11-09, to plan later).** Club leaders register their club on the site and become its managers. What managers can do, and how to check that someone really leads the club, are still to be planned.
 
 **Future ideas (Kabir, 2026-10-29),** since Instagram can't be scraped automatically:
 - **Upload a flyer to add an event.** Done as part of accounts phase D (2026-11-09).
@@ -65,6 +68,7 @@ A web app for UIUC students that shows which clubs are giving out free food at t
 - **2026-11-06: Ended submissions disappear on their own.** Kabir didn't want a bulk of old approved submissions building up. They leave the review page when the event ends and are deleted a week later by a daily job, matching saved events.
 - **2026-11-06: An OneIllinois outage keeps the last published list; a Supabase outage doesn't.** With two sources, the old rule (fail only if every source is down) would have published a nearly empty list if only OneIllinois failed (Claude's choice).
 - **2026-11-09: Following clubs, and filters still reset each visit.** Kabir chose following clubs over remembering filter choices, and dropped the latter, keeping the October choice that filters reset each visit. Before notifications exist, following marks the club's events, adds a "Clubs I follow" filter, and lists clubs on a Following page in the profile menu (Kabir moved the list there from Account settings). Clubs are stored by name, because OneIllinois and submissions share no club ID, and names that differ only in capitals or spacing count as one club (Claude's choice). Unfollowing needs no confirmation, since following again is one tap.
+- **2026-11-09: A Club search box with the site's own suggestion list.** Kabir wanted to filter by club without a long list of clubs on screen. Claude suggested typing part of a name with suggestions, over a long checklist or a scrolling menu. The browser's built-in suggestions (`datalist`) were tried first, but Kabir said they didn't fit the site's look and browsers don't let sites style them, so the site draws its own list (ARIA combobox pattern, keyboard and screen reader support). Matching is "name contains what was typed" (Claude's choice), so a link to one club can also show a longer name containing it. The club from a Following link is removed from the address once read, so clearing the filter and refreshing doesn't bring it back.
 
 ## Problems
 
