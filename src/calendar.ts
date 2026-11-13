@@ -1,5 +1,6 @@
 // The Calendar page: a month view of this month and next, where picking a day shows its free-food events.
 
+import { announce, eventCount } from "./announce.ts";
 import { element } from "./dom.ts";
 import { CAMPUS_TIME_ZONE, campusDate, coveredDates, datesInMonth, eventsOnDate, pickDate, type EventsFile, type FoodEvent } from "./events.ts";
 import { eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
@@ -37,7 +38,7 @@ async function start(): Promise<void> {
   updated.textContent = lastCheckedText(data);
   const { panel, filters: startingFilters } = renderFilterPanel(eventTypesIn(data.events), clubsIn(data.events), takeClubFromAddress(), (newFilters) => {
     filters = newFilters;
-    render();
+    announce(render());
   });
   filters = startingFilters;
   content.replaceChildren(panel, results);
@@ -56,15 +57,16 @@ function selectedDate(dates: string[]): string {
   return pickDate(new URLSearchParams(window.location.search).get("date"), dates);
 }
 
-/** Shows the day in the page address, turning the calendar to its month. */
-function showDayFromAddress(): void {
+/** Shows the day in the page address, turning the calendar to its month. Returns what `render` returns. */
+function showDayFromAddress(): string {
   shownMonth = selectedDate(coveredDates(campusDate(new Date()))).slice(0, 7);
-  render();
+  return render();
 }
 
-function render(): void {
+/** Redraws the calendar and the chosen day's list, and returns a sentence summing up that day for screen readers. */
+function render(): string {
   if (data === null) {
-    return;
+    return "";
   }
   const now = new Date();
   const today = campusDate(now);
@@ -82,6 +84,7 @@ function render(): void {
   );
   const months = [...new Set(dates.map((date) => date.slice(0, 7)))];
   results.replaceChildren(renderMonth(months, today, selected, events, now), dayColumn);
+  return `${formatDay(selected)}: ${eventCount(eventsStillOn(eventsOnDate(events, selected), selected, now).length)}`;
 }
 
 /**
@@ -164,8 +167,7 @@ function renderDayButton(date: string, count: number, selected: boolean, isToday
     "",
   );
   button.href = `?date=${date}`;
-  const countLabel = `${count === 0 ? "no" : count} ${count === 1 ? "event" : "events"}`;
-  button.setAttribute("aria-label", `${isToday ? "Today, " : ""}${formatDay(date)}, ${countLabel}`);
+  button.setAttribute("aria-label", `${isToday ? "Today, " : ""}${formatDay(date)}, ${eventCount(count).toLowerCase()}`);
   if (selected) {
     button.setAttribute("aria-current", "date");
   }
@@ -181,7 +183,7 @@ function renderDayButton(date: string, count: number, selected: boolean, isToday
   button.addEventListener("click", (event) => {
     event.preventDefault();
     window.history.pushState(null, "", button.href);
-    showDayFromAddress();
+    announce(showDayFromAddress());
   });
   return button;
 }

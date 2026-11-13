@@ -1,5 +1,6 @@
 // The parts shared by every page: the menu in the header, the account menu, the footer, and the contact email links.
 
+import { setUpAnnouncer } from "./announce.ts";
 import { element } from "./dom.ts";
 import { MAX_QUERY_LENGTH } from "./search.ts";
 
@@ -55,6 +56,7 @@ const FOOTER_HTML = `
 
 /** Fills in the header menu, the footer, and any `[data-contact-email]` links on the page. */
 export function setUpPage(): void {
+  setUpAnnouncer();
   const nav = document.querySelector<HTMLElement>("#site-nav");
   if (nav) {
     renderNav(nav, window.location.pathname);

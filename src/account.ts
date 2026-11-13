@@ -1,6 +1,7 @@
 // The Account page: sign in with an Illinois Google account, or, once signed in, the account settings.
 
 import type { User } from "@supabase/supabase-js";
+import { announce } from "./announce.ts";
 import { currentUser, deleteMyAccount, fullName, renderGoogleButton, signOut, supabase } from "./auth.ts";
 import { describePlan, planSize } from "./calendarPlan.ts";
 import { element } from "./dom.ts";
@@ -88,6 +89,7 @@ function signedIn(user: User): HTMLElement[] {
     try {
       await deleteMyAccount();
       content.replaceChildren(heading("Your account was deleted"), paragraph("Your name, email, saved events, and followed clubs have been removed."));
+      announce("Your account was deleted.");
     } catch {
       deleteButton.disabled = false;
       deleteStatus.textContent = "Couldn't delete your account. Check your connection and try again.";

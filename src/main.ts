@@ -1,5 +1,6 @@
 // The Today page: today's free-food events, grouped into happening now and later today, then the next few days.
 
+import { announce, eventCount } from "./announce.ts";
 import { element } from "./dom.ts";
 import { campusDate, eventsOnDate, type EventsFile } from "./events.ts";
 import {
@@ -40,7 +41,8 @@ async function showToday(): Promise<void> {
   const showResults = () => renderResults(results, data, filters, today, now);
   const { panel, filters: startingFilters } = renderFilterPanel(eventTypesIn(data.events), clubsIn(data.events), takeClubFromAddress(), (newFilters) => {
     filters = newFilters;
-    showResults();
+    const matching = showResults();
+    announce(`${eventCount(matching)} today${activeFilterCount(filters) > 0 ? " match your filters" : ""}`);
   });
   let filters = startingFilters;
   content.replaceChildren(panel, results);
@@ -53,7 +55,8 @@ async function showToday(): Promise<void> {
   showResults();
 }
 
-function renderResults(results: HTMLElement, data: EventsFile, filters: Filters, today: string, now: Date): void {
+/** Draws the events that match `filters`, and returns how many of today's are still on. */
+function renderResults(results: HTMLElement, data: EventsFile, filters: Filters, today: string, now: Date): number {
   const followed = followedClubKeys();
   const events = data.events.filter((event) => matchesFilters(event, filters, followed));
   // On wide screens today's list and "Coming up" sit side by side; on phones they stack.
@@ -62,6 +65,7 @@ function renderResults(results: HTMLElement, data: EventsFile, filters: Filters,
   const columns = element("div", "lg:grid lg:grid-cols-2 lg:items-start lg:gap-12", "");
   columns.append(todayColumn, ...renderComingUp(events, today));
   results.replaceChildren(...renderSourceWarning(data.failedSources), columns);
+  return eventsStillOn(eventsOnDate(events, today), today, now).length;
 }
 
 setUpPage();

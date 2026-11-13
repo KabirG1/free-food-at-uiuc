@@ -12,7 +12,8 @@ let listening = false;
 export function renderFollowButton(club: string): HTMLButtonElement {
   const button = element(
     "button",
-    "min-h-8 cursor-pointer rounded-sm border border-line px-2.5 text-sm font-semibold hover:border-selected aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-on-selected",
+    // The button looks 32px tall, but the invisible ::after reaches 6px past it above and below, a 44px tap target.
+    "relative min-h-8 cursor-pointer after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] rounded-sm border border-line px-2.5 text-sm font-semibold hover:border-selected aria-pressed:border-selected aria-pressed:bg-selected aria-pressed:text-on-selected",
     "",
   );
   button.type = "button";
