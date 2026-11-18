@@ -8,7 +8,7 @@ import { activeFilterCount, NO_FILTERS, parseClockTime, TIME_PRESETS, type Filte
 const PILL =
   "cursor-pointer rounded-sm border border-line px-3 py-1.5 has-checked:border-selected has-checked:bg-selected has-checked:text-on-selected has-focus-visible:outline-2 has-focus-visible:outline-food";
 const FIELD = "rounded-sm border border-line bg-page px-3 py-2 text-ink";
-const LEGEND = "font-display text-sm font-bold tracking-wide text-muted uppercase";
+const LEGEND = "font-mono text-xs font-medium tracking-wide text-muted uppercase";
 
 // Only on copies of the site with accounts, since following a club needs one.
 const CLUBS_FIELDSET = `

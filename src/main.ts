@@ -2,14 +2,13 @@
 
 import { announce, eventCount } from "./announce.ts";
 import { element } from "./dom.ts";
-import { CAMPUS_TIME_ZONE, campusDate, eventsOnDate, type EventsFile } from "./events.ts";
+import { campusDate, eventsOnDate, type EventsFile } from "./events.ts";
 import {
   eventsStillOn,
-  formatDay,
   lastCheckedText,
   loadEventsFile,
-  orangeSquare,
   renderComingUp,
+  renderDateBlock,
   renderDay,
   renderMessage,
   renderSourceWarning,
@@ -43,7 +42,7 @@ async function showToday(): Promise<void> {
     announce(`${eventCount(matching)} today${activeFilterCount(filters) > 0 ? " match your filters" : ""}`);
   });
   let filters = startingFilters;
-  content.replaceChildren(renderFrontPage(today, showing), panel, results);
+  content.replaceChildren(renderDateBlock(today, "Today", showing, "h2"), panel, results);
   // With "Clubs I follow" on, following or unfollowing a club changes which events match.
   onFollowedClubsChange(() => {
     if (filters.followedOnly) {
@@ -51,39 +50,6 @@ async function showToday(): Promise<void> {
     }
   });
   showResults();
-}
-
-const shortDayFormat = new Intl.DateTimeFormat("en-US", { timeZone: CAMPUS_TIME_ZONE, weekday: "short", month: "short", day: "numeric" });
-
-/** "Wed 18 Nov" for a YYYY-MM-DD date. */
-function formatShortDay(date: string): string {
-  // Noon UTC is the same calendar day in Champaign, whatever time zone the viewer is in.
-  const parts = shortDayFormat.formatToParts(new Date(`${date}T12:00:00Z`));
-  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((entry) => entry.type === type)?.value ?? "";
-  return `${part("weekday")} ${part("day")} ${part("month")}`;
-}
-
-/**
- * The top of the page, like a newspaper's front page: today's date in large dot-matrix letters and how many events
- * still have food. Screen readers hear the full date instead of the abbreviated one.
- */
-function renderFrontPage(today: string, showing: number): HTMLElement {
-  const front = element("section", "mt-8 pb-2", "");
-  front.setAttribute("aria-labelledby", "front-date");
-  const label = element("p", "flex items-center gap-2 font-mono text-xs font-medium tracking-wide uppercase", "");
-  label.append(orangeSquare(), "Today");
-
-  const date = element("h2", "mt-3 font-dot text-3xl leading-none font-black uppercase sm:text-4xl", "");
-  date.id = "front-date";
-  const shortDate = element("span", "", formatShortDay(today));
-  shortDate.setAttribute("aria-hidden", "true");
-  date.append(shortDate, element("span", "sr-only", formatDay(today)));
-
-  front.append(label, date);
-  if (showing > 0) {
-    front.append(element("p", "mt-3 font-display text-xl leading-tight font-bold", `${showing} ${showing === 1 ? "event" : "events"} with free food`));
-  }
-  return front;
 }
 
 /** Draws the events that match `filters`, and returns how many of today's are still on. */

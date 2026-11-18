@@ -3,7 +3,16 @@
 import { announce, eventCount } from "./announce.ts";
 import { element } from "./dom.ts";
 import { CAMPUS_TIME_ZONE, campusDate, coveredDates, datesInMonth, eventsOnDate, pickDate, type EventsFile, type FoodEvent } from "./events.ts";
-import { eventsStillOn, formatDay, lastCheckedText, loadEventsFile, renderDay, renderMessage, renderSourceWarning } from "./eventList.ts";
+import {
+  eventsStillOn,
+  formatDay,
+  lastCheckedText,
+  loadEventsFile,
+  renderDateBlock,
+  renderDay,
+  renderMessage,
+  renderSourceWarning,
+} from "./eventList.ts";
 import { renderFilterPanel, takeClubFromAddress } from "./filterPanel.ts";
 import { followedClubKeys, onFollowedClubsChange } from "./followedClubs.ts";
 import { activeFilterCount, clubsIn, eventTypesIn, matchesFilters, NO_FILTERS, type Filters } from "./filters.ts";
@@ -75,16 +84,16 @@ function render(): string {
   const followed = followedClubKeys();
   const events = data.events.filter((event) => matchesFilters(event, filters, followed));
 
-  const heading = element("h1", "mt-8 font-display text-xl leading-tight font-bold", formatDay(selected));
+  const showing = eventsStillOn(eventsOnDate(events, selected), selected, now).length;
   const dayColumn = element("div", "", "");
   dayColumn.append(
     ...renderSourceWarning(data.failedSources),
-    heading,
+    renderDateBlock(selected, selected === today ? "Today" : "Chosen day", showing, "h1"),
     ...renderDay(eventsOnDate(events, selected), selected, now, activeFilterCount(filters) > 0),
   );
   const months = [...new Set(dates.map((date) => date.slice(0, 7)))];
   results.replaceChildren(renderMonth(months, today, selected, events, now), dayColumn);
-  return `${formatDay(selected)}: ${eventCount(eventsStillOn(eventsOnDate(events, selected), selected, now).length)}`;
+  return `${formatDay(selected)}: ${eventCount(showing)}`;
 }
 
 /**
@@ -97,12 +106,12 @@ function renderMonth(months: string[], today: string, selected: string, events: 
 
   const index = months.indexOf(shownMonth);
   const header = element("div", "flex items-center justify-between", "");
-  const title = element("h2", "font-display text-lg font-bold", monthFormat.format(noon(`${shownMonth}-15`)));
+  const title = element("h2", "font-dot text-2xl leading-none font-black uppercase", monthFormat.format(noon(`${shownMonth}-15`)));
   title.setAttribute("aria-live", "polite");
   header.append(renderMonthArrow("previous", months[index - 1]), title, renderMonthArrow("next", months[index + 1]));
 
   // Each day's label names its full date, so screen readers skip the weekday row.
-  const weekdays = element("div", "mt-2 grid grid-cols-7 text-sm text-muted", "");
+  const weekdays = element("div", "mt-3 grid grid-cols-7 font-mono text-xs tracking-wide text-muted uppercase", "");
   weekdays.setAttribute("aria-hidden", "true");
   weekdays.append(...WEEKDAYS.map((day) => element("span", "px-1 pb-1 sm:px-2", day)));
 
@@ -155,7 +164,7 @@ function noon(date: string): Date {
 /** A day that has passed: shown so the month looks complete, but greyed out and not clickable. */
 function renderPastDay(date: string): HTMLElement {
   const day = element("div", "aspect-square bg-page p-1 sm:p-2", "");
-  day.append(element("span", "font-display text-base leading-tight text-muted opacity-50 sm:text-lg", String(Number(date.slice(8)))));
+  day.append(element("span", "font-mono text-sm leading-tight text-muted opacity-50 sm:text-base", String(Number(date.slice(8)))));
   day.setAttribute("aria-hidden", "true");
   return day;
 }
@@ -173,9 +182,9 @@ function renderDayButton(date: string, count: number, selected: boolean, isToday
   }
   // Today's date is underlined so it's still easy to find after picking another day.
   const todayMark = isToday ? "underline decoration-food decoration-2 underline-offset-4" : "";
-  button.append(element("span", `font-display text-base leading-tight font-bold sm:text-lg ${todayMark}`, String(Number(date.slice(8)))));
+  button.append(element("span", `font-mono text-sm leading-tight font-medium sm:text-base ${todayMark}`, String(Number(date.slice(8)))));
   if (count > 0) {
-    const countText = element("span", `mt-auto text-sm leading-tight font-semibold ${selected ? "" : "text-food"}`, String(count));
+    const countText = element("span", `mt-auto font-mono text-xs leading-tight font-medium ${selected ? "" : "text-food"}`, String(count));
     // "2 events" where the squares are wide enough; just "2" on phones.
     countText.append(element("span", "hidden lg:inline", count === 1 ? " event" : " events"));
     button.append(countText);

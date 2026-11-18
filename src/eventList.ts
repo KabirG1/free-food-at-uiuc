@@ -26,10 +26,42 @@ const dayFormat = new Intl.DateTimeFormat("en-US", {
 
 const LINK_CLASSES = "underline decoration-line decoration-1 underline-offset-3 hover:decoration-current";
 
+const shortDayFormat = new Intl.DateTimeFormat("en-US", { timeZone: CAMPUS_TIME_ZONE, weekday: "short", month: "short", day: "numeric" });
+
 /** "Thursday, October 29" for a YYYY-MM-DD date. */
 export function formatDay(date: string): string {
   // Noon UTC is the same calendar day in Champaign, whatever time zone the viewer is in.
   return dayFormat.format(new Date(`${date}T12:00:00Z`));
+}
+
+/** "Thu 29 Oct" for a YYYY-MM-DD date. */
+export function formatShortDay(date: string): string {
+  const parts = shortDayFormat.formatToParts(new Date(`${date}T12:00:00Z`));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((entry) => entry.type === type)?.value ?? "";
+  return `${part("weekday")} ${part("day")} ${part("month")}`;
+}
+
+/**
+ * A day's heading, like a newspaper's front page: a small label ("Today"), the date in large dot-matrix letters,
+ * and how many events have food. Screen readers hear the full date instead of the abbreviated one.
+ */
+export function renderDateBlock(date: string, label: string, count: number, headingTag: "h1" | "h2"): HTMLElement {
+  const block = element("section", "mt-8 pb-2", "");
+  const labelLine = element("p", "flex items-center gap-2 font-mono text-xs font-medium tracking-wide uppercase", "");
+  labelLine.append(orangeSquare(), label);
+
+  const heading = element(headingTag, "mt-3 font-dot text-3xl leading-none font-black uppercase sm:text-4xl", "");
+  heading.id = "day-heading";
+  block.setAttribute("aria-labelledby", heading.id);
+  const shortDate = element("span", "", formatShortDay(date));
+  shortDate.setAttribute("aria-hidden", "true");
+  heading.append(shortDate, element("span", "sr-only", formatDay(date)));
+
+  block.append(labelLine, heading);
+  if (count > 0) {
+    block.append(element("p", "mt-3 font-display text-xl leading-tight font-bold", `${count} ${count === 1 ? "event" : "events"} with free food`));
+  }
+  return block;
 }
 
 /** Loads the saved events, or returns null if they can't be reached. */
@@ -122,7 +154,7 @@ export function renderSourceWarning(failedSources: string[]): HTMLElement[] {
 export function renderMessage(heading: string, detail: string, kind: "empty" | "error"): HTMLElement {
   const block = element("div", "mt-10", "");
   block.append(
-    element("h2", `font-display text-xl leading-tight font-bold ${kind === "error" ? "text-error" : ""}`, heading),
+    element("h2", `font-display text-2xl leading-tight font-extrabold sm:text-3xl ${kind === "error" ? "text-error" : ""}`, heading),
     element("p", "mt-2 text-muted", detail),
   );
   return block;

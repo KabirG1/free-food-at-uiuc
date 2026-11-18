@@ -37,7 +37,7 @@ async function showFollowing(): Promise<void> {
   status.setAttribute("role", "status");
   const list = element("div", "", "");
   content.replaceChildren(
-    element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Following"),
+    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Following"),
     element("p", "mt-2 text-muted", "Tap a club to see its events."),
     list,
     status,
