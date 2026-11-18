@@ -5,10 +5,10 @@ import { element } from "./dom.ts";
 import { campusDate, eventsOnDate, type EventsFile } from "./events.ts";
 import {
   eventsStillOn,
-  formatDay,
   lastCheckedText,
   loadEventsFile,
   renderComingUp,
+  renderDateBlock,
   renderDay,
   renderMessage,
   renderSourceWarning,
@@ -19,7 +19,6 @@ import { activeFilterCount, clubsIn, eventTypesIn, matchesFilters, type Filters 
 import { setUpPage } from "./layout.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
-const subtitle = document.querySelector<HTMLElement>("#subtitle")!;
 const updated = document.querySelector<HTMLElement>("#updated")!;
 
 async function showToday(): Promise<void> {
@@ -33,8 +32,6 @@ async function showToday(): Promise<void> {
   const now = new Date();
   const today = campusDate(now);
   const showing = eventsStillOn(eventsOnDate(data.events, today), today, now).length;
-  subtitle.textContent =
-    showing > 0 ? `${formatDay(today)} · ${showing} ${showing === 1 ? "event" : "events"} with free food` : formatDay(today);
   updated.textContent = lastCheckedText(data);
 
   const results = element("div", "", "");
@@ -45,7 +42,7 @@ async function showToday(): Promise<void> {
     announce(`${eventCount(matching)} today${activeFilterCount(filters) > 0 ? " match your filters" : ""}`);
   });
   let filters = startingFilters;
-  content.replaceChildren(panel, results);
+  content.replaceChildren(renderDateBlock(today, "Today", showing, "h2"), panel, results);
   // With "Clubs I follow" on, following or unfollowing a club changes which events match.
   onFollowedClubsChange(() => {
     if (filters.followedOnly) {

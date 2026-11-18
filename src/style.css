@@ -1,34 +1,46 @@
 /* The design system. Tailwind's default palette, sizes, and fonts are removed, so only the values below exist. */
 
-@import "@fontsource-variable/montserrat";
-@import "@fontsource-variable/source-sans-3";
+@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource-variable/doto/full.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 @import "tailwindcss";
 
 @theme {
   --*: initial;
 
-  /* Illinois brand fonts: Montserrat for headlines and times, Source Sans for everything else. */
-  --font-display: "Montserrat Variable", "Arial Black", sans-serif;
-  --font-body: "Source Sans 3 Variable", Arial, sans-serif;
+  /* Archivo for text and headlines, Doto's dot-matrix for times and the masthead, Plex Mono for small labels. */
+  --font-display: "Archivo Variable", "Arial Narrow", sans-serif;
+  --font-body: "Archivo Variable", Arial, sans-serif;
+  --font-dot: "Doto Variable", "Courier New", monospace;
+  --font-dot--font-variation-settings: "ROND" 100; /* round dots, like a dot-matrix display */
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
 
+  --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
   --text-base: 1.0625rem;
   --text-lg: 1.1875rem;
   --text-xl: 1.375rem;
   --text-2xl: 1.875rem;
+  --text-3xl: 2.5rem;
+  --text-4xl: 3.5rem;
 
   --font-weight-normal: 400;
+  --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --font-weight-extrabold: 800;
+  --font-weight-black: 900;
 
+  --leading-none: 1;
   --leading-tight: 1.2;
   --leading-normal: 1.5;
   --tracking-wide: 0.08em;
 
   /* Spacing steps of 4px: p-4 is 16px. */
   --spacing: 4px;
-  --radius-sm: 4px;
+  /* Square corners everywhere. */
+  --radius-sm: 0;
   /* The header, footer, and page fill up to 72rem; text-heavy pages keep lines at a readable 40rem. */
   --container-page: 72rem;
   --container-prose: 40rem;
@@ -39,32 +51,36 @@
   --breakpoint-lg: 64rem;
 }
 
-/* Colors switch with the system's dark mode. Contrast ratios are against the page background. */
+/*
+ * Colors switch with the system's dark mode: black and white, with Illini Orange as the one accent.
+ * Contrast ratios are against the page background unless noted.
+ */
 :root {
-  --brand: #13294b; /* Illini Blue, header background */
+  --brand: #111111; /* header and footer background */
   --on-brand: #ffffff;
-  --on-brand-muted: #c8d1df;
-  --brand-accent: #ff5f05; /* Illini Orange, only on the blue header (4.76:1) */
+  --on-brand-muted: #a8a8a8; /* 7.9:1 on the header */
+  --brand-accent: #ff5f05; /* Illini Orange: on the black header, and as marks and rules (not small text on white, 3:1); 6.2:1 on the header */
   --page: #ffffff;
-  --ink: #13294b; /* 14.5:1 */
-  --muted: #56637a; /* 6.1:1 */
+  --ink: #111111; /* 18.9:1 */
+  --muted: #5e5e5e; /* 6.5:1 */
   --food: #c2410c; /* darker orange for small text, 5.2:1 */
-  --line: #dde1e8;
+  --line: #d6d6d6;
   --error: #b42318;
-  --selected: #13294b; /* chosen calendar day */
-  --on-selected: #ffffff; /* 14.5:1 */
+  --selected: #111111; /* chosen calendar day */
+  --on-selected: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --page: #0e1e36;
-    --ink: #eef1f5; /* 14.7:1 */
-    --muted: #a3afc2; /* 7.5:1 */
-    --food: #ff7a2e; /* 6.4:1 */
-    --line: #24375a;
+    --brand: #000000;
+    --page: #111111;
+    --ink: #f2f2f2; /* 16.9:1 */
+    --muted: #a3a3a3; /* 7.5:1 */
+    --food: #ff7a2e; /* 7.3:1 */
+    --line: #333333;
     --error: #ff8a80;
-    --selected: #eef1f5;
-    --on-selected: #13294b; /* 13:1 */
+    --selected: #f2f2f2;
+    --on-selected: #111111;
   }
 }
 
@@ -123,6 +139,21 @@
     outline: 2px solid var(--color-food);
     outline-offset: 2px;
     border-radius: var(--radius-sm);
+  }
+
+  /* The main area takes focus from the skip link; it isn't something to click, so it gets no outline. */
+  main:focus {
+    outline: none;
+  }
+
+  /* Taps respond right away instead of waiting to see if they're a double-tap zoom. */
+  a,
+  button,
+  summary,
+  label,
+  input,
+  select {
+    touch-action: manipulation;
   }
 }
 

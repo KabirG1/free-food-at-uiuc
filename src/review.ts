@@ -49,11 +49,11 @@ function renderSubmissions(submissions: SubmittedEvent[], notice = ""): void {
   noticeLine.setAttribute("role", "status");
 
   content.replaceChildren(
-    element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Review submissions"),
+    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Review submissions"),
     noticeLine,
-    element("h2", "mt-6 font-display text-lg font-bold", `Waiting for review (${pending.length})`),
+    element("h2", "mt-8 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", `Waiting for review (${pending.length})`),
     pending.length > 0 ? renderList(pending) : element("p", "mt-2 text-muted", "Nothing is waiting right now."),
-    element("h2", "mt-10 font-display text-lg font-bold", `Approved (${approved.length})`),
+    element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", `Approved (${approved.length})`),
     updateNote(),
     ...(approved.length > 0 ? [renderList(approved)] : []),
   );

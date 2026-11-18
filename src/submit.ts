@@ -44,7 +44,7 @@ async function showSubmitPage(): Promise<void> {
   const mine = element("section", "", "");
   const form = renderForm(user, mine);
   content.replaceChildren(
-    element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Submit an event"),
+    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Submit an event"),
     element("p", "mt-3", "Know about free food that isn't listed? Add it here. An admin checks each event before it goes on the site, and it appears at the site's next update after that."),
     renderFlyerUpload(form),
     form,
@@ -298,7 +298,7 @@ async function showMySubmissions(user: User, mine: HTMLElement): Promise<void> {
     );
     list.append(item);
   }
-  mine.replaceChildren(element("h2", "mt-10 font-display text-lg font-bold", "Your submissions"), list);
+  mine.replaceChildren(element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", "Your submissions"), list);
 }
 
 setUpPage();

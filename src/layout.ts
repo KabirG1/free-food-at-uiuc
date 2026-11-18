@@ -45,18 +45,19 @@ export function navItems(pathname: string): NavItem[] {
 // The footer is the same on every page. It is fixed text, so building it from a string is safe.
 const FOOTER_HTML = `
   <div class="mx-auto max-w-page px-4 lg:px-8 pt-8 pb-12">
-    <p class="font-display text-lg font-bold text-on-brand">Free Food <span class="text-brand-accent">@ UIUC</span></p>
+    <p class="font-dot text-xl leading-none font-black text-on-brand uppercase">Free Food <span class="text-brand-accent">@ UIUC</span></p>
     <p class="mt-3">Missing an event, or found something wrong?</p>
     <p class="mt-1"><a data-contact-email class="font-semibold text-on-brand underline decoration-on-brand-muted underline-offset-3 hover:decoration-current" href="./contact.html">Contact us</a></p>
-    <nav aria-label="Footer" class="mt-6 flex flex-wrap gap-x-6 font-display text-sm font-semibold">
+    <nav aria-label="Footer" class="mt-6 flex flex-wrap gap-x-6 font-mono text-xs font-medium tracking-wide uppercase">
       ${[...PAGES, { label: "Privacy", key: "privacy" }].map((page) => `<a class="py-2 hover:text-on-brand" href="${pageHref(page.key)}">${page.label}</a>`).join("")}
     </nav>
-    <p class="mt-4 text-sm">A student project, not affiliated with the University of Illinois.</p>
+    <p class="mt-4 font-mono text-xs">A student project, not affiliated with the University of Illinois.</p>
   </div>`;
 
 /** Fills in the header menu, the footer, and any `[data-contact-email]` links on the page. */
 export function setUpPage(): void {
   setUpAnnouncer();
+  addSkipLink();
   const nav = document.querySelector<HTMLElement>("#site-nav");
   if (nav) {
     renderNav(nav, window.location.pathname);
@@ -74,12 +75,33 @@ export function setUpPage(): void {
   }
 }
 
+/**
+ * A "Skip to content" link, first on the page and hidden until it gets keyboard focus, so keyboard and screen
+ * reader users can jump past the header and menu. Main areas without an id get one.
+ */
+function addSkipLink(): void {
+  const main = document.querySelector<HTMLElement>("main");
+  if (!main) {
+    return;
+  }
+  main.id ||= "content";
+  // Lets the link move focus into the main area, not just scroll to it.
+  main.tabIndex = -1;
+  const link = element(
+    "a",
+    "sr-only bg-brand-accent px-4 py-3 font-mono text-sm font-medium tracking-wide text-brand uppercase focus:not-sr-only focus:block",
+    "Skip to content",
+  );
+  link.href = `#${main.id}`;
+  document.body.prepend(link);
+}
+
 // Fixed markup, so building it from a string is safe.
 const SEARCH_ICON_SVG = `<svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>`;
 
 /** A search box that opens the Search page with what was typed. `inputId` must be unique on the page. */
 export function renderSearchForm(inputId: string, className: string): HTMLFormElement {
-  const form = element("form", `relative font-body text-base font-normal ${className}`, "");
+  const form = element("form", `relative font-body text-base font-normal tracking-[normal] normal-case ${className}`, "");
   form.action = "./search.html";
   form.method = "get";
   form.setAttribute("role", "search");
@@ -110,7 +132,7 @@ export function renderSearchForm(inputId: string, className: string): HTMLFormEl
 function renderNav(nav: HTMLElement, pathname: string): void {
   const items = navItems(pathname);
   const showSearch = pageKey(pathname) !== "search";
-  nav.className = "mt-3 flex flex-wrap items-center gap-x-5 font-display text-sm font-semibold";
+  nav.className = "mt-3 flex flex-wrap items-center gap-x-5 font-mono text-xs font-medium tracking-wide uppercase";
 
   const menuList = element("ul", "basis-full border-t border-on-brand-muted/30 py-2 sm:hidden", "");
   menuList.id = "menu-list";
@@ -123,11 +145,11 @@ function renderNav(nav: HTMLElement, pathname: string): void {
   for (const item of items) {
     const entry = element("li", "", "");
     const link = renderNavLink(item);
-    link.className = `block py-3 text-base ${item.current ? "text-on-brand" : "text-on-brand-muted hover:text-on-brand"}`;
+    link.className = `block py-3 text-sm ${item.current ? "text-on-brand" : "text-on-brand-muted hover:text-on-brand"}`;
     entry.append(link);
     menuList.append(entry);
   }
-  const menuButton = renderToggle(menuList, "flex items-center gap-2 py-2 text-on-brand sm:hidden");
+  const menuButton = renderToggle(menuList, "flex items-center gap-2 py-2 text-on-brand uppercase sm:hidden");
   menuButton.innerHTML = MENU_ICON_SVG;
   menuButton.append("Menu");
 
@@ -201,7 +223,7 @@ function renderAccountControl(current: boolean): HTMLElement {
     if (user === null) {
       return;
     }
-    const panel = element("div", "absolute top-full right-0 z-20 mt-2 w-64 rounded-sm border border-line bg-page font-body text-base font-normal text-ink", "");
+    const panel = element("div", "absolute top-full right-0 z-20 mt-2 w-64 rounded-sm border border-line bg-page font-body text-base font-normal tracking-[normal] text-ink normal-case", "");
     panel.id = "account-menu";
     panel.hidden = true;
     const who = element("div", "border-b border-line px-4 py-3", "");
@@ -237,7 +259,7 @@ function renderAccountControl(current: boolean): HTMLElement {
 
     const button = renderToggle(panel, "flex items-center gap-2 py-1 text-on-brand", true);
     button.setAttribute("aria-label", `Account menu for ${firstName(user)}`);
-    const initial = element("span", "flex size-9 items-center justify-center rounded-full bg-brand-accent font-bold text-brand", firstName(user).charAt(0).toUpperCase());
+    const initial = element("span", "flex size-9 items-center justify-center bg-brand-accent font-mono font-medium text-brand", firstName(user).charAt(0).toUpperCase());
     initial.setAttribute("aria-hidden", "true");
     const name = element("span", `hidden max-w-32 truncate lg:block ${current ? "text-on-brand" : "text-on-brand-muted"}`, firstName(user));
     name.setAttribute("aria-hidden", "true");

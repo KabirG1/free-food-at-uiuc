@@ -62,7 +62,7 @@ function renderSavedList(shown: ReturnType<typeof savedEventsToShow>): HTMLEleme
     days.set(date, [...(days.get(date) ?? []), event]);
   }
   return [
-    element("h1", "mt-8 font-display text-xl leading-tight font-bold", "Saved events"),
+    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Saved events"),
     ...[...days].map(([date, events]) => {
       const section = element("section", "mt-6", "");
       section.append(element("h2", "font-display font-bold", formatDay(date)), eventList(events, "mt-2", { notListed }));

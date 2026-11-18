@@ -102,7 +102,7 @@ function signedIn(user: User): HTMLElement[] {
     element("p", "text-muted", user.email ?? ""),
     signOutButton,
     calendarSection(),
-    element("h2", "mt-10 font-display text-lg font-bold", "Delete account"),
+    element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", "Delete account"),
     paragraph("Removes your name, email, saved events, and followed clubs from the site for good."),
     deleteButton,
     deleteStatus,
@@ -298,7 +298,7 @@ function calendarSection(): HTMLElement {
     },
   );
 
-  section.append(element("h2", "mt-10 font-display text-lg font-bold", "Google Calendar"), main.row, explanation, note, confirmBox, extras, status);
+  section.append(element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", "Google Calendar"), main.row, explanation, note, confirmBox, extras, status);
   return section;
 }
 
@@ -325,7 +325,7 @@ function signInErrorMessage(error: Error): string {
 }
 
 function heading(text: string): HTMLElement {
-  return element("h1", "mt-8 font-display text-xl leading-tight font-bold", text);
+  return element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", text);
 }
 
 function paragraph(text: string): HTMLElement {
