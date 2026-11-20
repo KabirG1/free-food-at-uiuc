@@ -28,6 +28,8 @@ import { clubKey } from "./events.ts";
 import { loadEventsFile, renderMessage } from "./eventList.ts";
 import { clubsIn } from "./filters.ts";
 import { setUpPage } from "./layout.ts";
+import { loadEventsOnSite, type SubmittedEvent } from "./submissions.ts";
+import { describeWhen, renderEditLink, renderTakeDownButton } from "./submissionView.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 
@@ -90,9 +92,14 @@ async function showManagePage(): Promise<void> {
 async function showClubs(user: User, isAdmin: boolean, clubsArea: HTMLElement, history: HTMLElement): Promise<void> {
   let mine: ManagerRequest[];
   let teams: ManagerRequest[];
+  let clubEvents: SubmittedEvent[];
   try {
     // Admins see every club's team, which belongs on the Review page, not here.
-    [mine, teams] = await Promise.all([loadMyRequests(user.id), isAdmin ? Promise.resolve([]) : loadClubTeams()]);
+    [mine, teams, clubEvents] = await Promise.all([
+      loadMyRequests(user.id),
+      isAdmin ? Promise.resolve([]) : loadClubTeams(),
+      isAdmin ? Promise.resolve([]) : loadEventsOnSite(),
+    ]);
   } catch {
     clubsArea.replaceChildren(element("p", "mt-6 text-error", "Couldn't load your clubs. Refresh the page to try again."));
     history.replaceChildren();
@@ -107,6 +114,7 @@ async function showClubs(user: User, isAdmin: boolean, clubsArea: HTMLElement, h
       renderTeam(
         club,
         teams.filter((row) => clubKey(row.club) === clubKey(club)),
+        clubEvents.filter((event) => clubKey(event.club) === clubKey(club)),
         myEmail,
         refresh,
       ),
@@ -174,14 +182,23 @@ function renderInvitation(invitation: ManagerRequest, refresh: () => Promise<voi
   return section;
 }
 
-/** One club the student manages: a link to post, everyone who manages it or is invited, and a box to invite more. */
-function renderTeam(club: string, team: ManagerRequest[], myEmail: string, refresh: () => Promise<void>): HTMLElement {
+/**
+ * One club the student manages: a link to post, its upcoming events on the site with Edit and Take off the site,
+ * everyone who manages it or is invited, and a box to invite more.
+ */
+function renderTeam(club: string, team: ManagerRequest[], events: SubmittedEvent[], myEmail: string, refresh: () => Promise<void>): HTMLElement {
   const section = element("section", "", "");
   const postLink = element("a", `font-semibold ${LINK}`, "Post an event for this club");
   postLink.href = `./submit.html?club=${encodeURIComponent(club)}`;
   const postLine = element("p", "mt-2", "");
   postLine.append(postLink);
-  section.append(element("h2", SECTION_HEADING, club), postLine, element("h3", "mt-6 font-display text-lg font-bold", "Managers"));
+  section.append(
+    element("h2", SECTION_HEADING, club),
+    postLine,
+    element("h3", "mt-6 font-display text-lg font-bold", "Upcoming events"),
+    renderClubEvents(events, refresh),
+    element("h3", "mt-8 font-display text-lg font-bold", "Managers"),
+  );
 
   const list = element("ul", "mt-2 divide-y divide-line border-y border-line", "");
   // Accepted managers first, then open invitations.
@@ -191,6 +208,27 @@ function renderTeam(club: string, team: ManagerRequest[], myEmail: string, refre
   }
   section.append(list, renderInviteForm(club, refresh));
   return section;
+}
+
+/** The club's events on the site that came through this site, whoever posted them. OneIllinois events can't be edited here. */
+function renderClubEvents(events: SubmittedEvent[], refresh: () => Promise<void>): HTMLElement {
+  if (events.length === 0) {
+    return element("p", "mt-2 text-muted", "None on the site right now. Events from OneIllinois are changed on OneIllinois.");
+  }
+  const list = element("ul", "mt-2 divide-y divide-line border-y border-line", "");
+  for (const event of events) {
+    const item = element("li", "py-3", "");
+    const actions = element("div", "mt-2 flex flex-wrap gap-3", "");
+    actions.append(renderEditLink(event, "manage"), ...renderTakeDownButton(event, refresh));
+    item.append(
+      element("p", "font-semibold", event.title),
+      element("p", "text-sm text-muted", describeWhen(event.starts_at, event.ends_at)),
+      element("p", "text-sm text-muted", event.location),
+      actions,
+    );
+    list.append(item);
+  }
+  return list;
 }
 
 function renderTeamMember(member: ManagerRequest, isMe: boolean, refresh: () => Promise<void>): HTMLElement {

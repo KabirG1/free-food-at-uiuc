@@ -121,6 +121,26 @@ export function checkSubmission(form: SubmissionForm, now: Date): FormResult {
   };
 }
 
+const campusClock = new Intl.DateTimeFormat("en-GB", { timeZone: CAMPUS_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+const campusDay = new Intl.DateTimeFormat("en-CA", { timeZone: CAMPUS_TIME_ZONE });
+
+/** A saved event as the form's fields, in Champaign time, for editing. The reverse of checkSubmission. */
+export function submissionToForm(submission: NewSubmission): SubmissionForm {
+  const starts = new Date(submission.starts_at);
+  const ends = new Date(submission.ends_at);
+  return {
+    title: submission.title,
+    club: submission.club,
+    date: campusDay.format(starts),
+    startTime: campusClock.format(starts),
+    endTime: campusClock.format(ends),
+    location: submission.location,
+    food: submission.food,
+    eventType: submission.event_type,
+    url: submission.url ?? "",
+  };
+}
+
 /** "Pizza, soda and cookies" as separate lowercase words, which the Meals and Snacks filters look for. */
 export function parseFoodList(food: string): string[] {
   const words = food

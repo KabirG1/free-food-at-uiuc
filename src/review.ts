@@ -9,7 +9,7 @@ import { renderMessage } from "./eventList.ts";
 import { setUpPage } from "./layout.ts";
 import { isHttpsUrl } from "./submissionRules.ts";
 import { loadSubmissionsToReview, reviewSubmission, type SubmittedEvent } from "./submissions.ts";
-import { describeWhen } from "./submissionView.ts";
+import { describeWhen, renderEditLink } from "./submissionView.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 
@@ -152,17 +152,21 @@ function renderSubmission(submission: SubmittedEvent): HTMLElement {
   }
 
   const decide = (decision: "approved" | "rejected") => () => reviewSubmission(submission.id, decision);
-  item.append(
-    ...renderActions(
-      submission.title,
-      submission.status === "pending"
-        ? [
-            { label: "Approve", workingText: "Approving…", style: APPROVE_BUTTON, run: decide("approved"), doneText: "Approved" },
-            { label: "Reject", workingText: "Rejecting…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Rejected" },
-          ]
-        : [{ label: "Take off the site", workingText: "Removing…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Taken off the site" }],
-    ),
+  const [buttons, problem] = renderActions(
+    submission.title,
+    submission.status === "pending"
+      ? [
+          { label: "Approve", workingText: "Approving…", style: APPROVE_BUTTON, run: decide("approved"), doneText: "Approved" },
+          { label: "Reject", workingText: "Rejecting…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Rejected" },
+        ]
+      : [{ label: "Take off the site", workingText: "Removing…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Taken off the site" }],
   );
+  // Fixing a typo before approving, or a detail on the site, without rejecting and asking for it again.
+  const edit = renderEditLink(submission, "review");
+  edit.classList.replace("text-sm", "text-base");
+  edit.classList.replace("px-3", "px-4");
+  buttons.append(edit);
+  item.append(buttons, problem);
   return item;
 }
 

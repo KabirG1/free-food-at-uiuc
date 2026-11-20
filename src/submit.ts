@@ -1,17 +1,26 @@
-// The Submit page: a form for signed-in students, and the status of what they've already submitted.
+// The Submit page: a form for signed-in students, the status of what they've already submitted, and (with
+// ?edit=<id>) the form for editing an event.
 
 import type { User } from "@supabase/supabase-js";
 import { currentUser, supabase } from "./auth.ts";
-import { loadMyRequests, managedClubs, pendingReviewCount, postClubEvent, takeDownClubEvent } from "./clubManagers.ts";
+import { loadMyRequests, managedClubs, pendingReviewCount, postClubEvent } from "./clubManagers.ts";
 import { element } from "./dom.ts";
-import { campusDate } from "./events.ts";
+import { campusDate, clubKey } from "./events.ts";
 import { renderMessage } from "./eventList.ts";
 import type { FlyerProblem } from "./flyer.ts";
 import { looksLikeAnEvent, type FlyerDetails } from "./flyerRules.ts";
 import { setUpPage } from "./layout.ts";
-import { checkSubmission, type FormProblems, type SubmissionForm } from "./submissionRules.ts";
-import { loadMySubmissions, submitEvent, TooManyPendingError, type SubmissionStatus, type SubmittedEvent } from "./submissions.ts";
-import { describeWhen } from "./submissionView.ts";
+import { checkSubmission, submissionToForm, type FormProblems, type SubmissionForm } from "./submissionRules.ts";
+import {
+  loadMySubmissions,
+  loadSubmission,
+  submitEvent,
+  TooManyPendingError,
+  updateSubmission,
+  type SubmissionStatus,
+  type SubmittedEvent,
+} from "./submissions.ts";
+import { describeWhen, renderEditLink, renderTakeDownButton } from "./submissionView.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 
@@ -43,6 +52,11 @@ async function showSubmitPage(): Promise<void> {
     return;
   }
   const posting = await loadPostingRights(user);
+  const editId = new URLSearchParams(window.location.search).get("edit");
+  if (editId !== null) {
+    await showEditPage(editId, posting);
+    return;
+  }
   const mine = element("section", "", "");
   const form = renderForm(user, mine, posting);
   content.replaceChildren(
@@ -54,6 +68,121 @@ async function showSubmitPage(): Promise<void> {
     mine,
   );
   await showMySubmissions(user, mine);
+}
+
+/** Where the Edit link came from, which is where Cancel and Save go back to. */
+function backPage(): { href: string; label: string } {
+  const from = new URLSearchParams(window.location.search).get("from");
+  if (from === "manage") {
+    return { href: "./manage.html", label: "Back to Manage a club" };
+  }
+  if (from === "review") {
+    return { href: "./review.html", label: "Back to Review" };
+  }
+  return { href: "./submit.html", label: "Back to Submit" };
+}
+
+/** Whether this student may edit the event. The database checks the same thing when saving. */
+function canEdit(submission: SubmittedEvent, posting: PostingRights): boolean {
+  if (posting.isAdmin) {
+    return submission.status !== "rejected";
+  }
+  if (submission.status === "approved") {
+    return posting.clubs.some((club) => clubKey(club) === clubKey(submission.club));
+  }
+  // The database only shows students their own waiting submissions, so a visible one is theirs.
+  return submission.status === "pending";
+}
+
+/**
+ * The edit form (`submit.html?edit=<id>`), filled in with the event. A manager editing a club's event on the site
+ * can't change its club; a student editing a waiting submission, or an admin, can.
+ */
+async function showEditPage(id: string, posting: PostingRights): Promise<void> {
+  const back = backPage();
+  const backLink = () => {
+    const link = element("a", "mt-6 inline-block rounded-sm bg-selected px-4 py-2.5 font-semibold text-on-selected", back.label);
+    link.href = back.href;
+    return link;
+  };
+  let submission: SubmittedEvent | null;
+  try {
+    submission = await loadSubmission(id);
+  } catch {
+    content.replaceChildren(renderMessage("Couldn't load this event", "Check your connection and refresh the page.", "error"), backLink());
+    return;
+  }
+  if (submission === null || !canEdit(submission, posting)) {
+    content.replaceChildren(
+      renderMessage("This event can't be edited", "It may have ended or been taken off the site. A submission can only be edited while it's waiting for review; after that, contact us to change it.", "empty"),
+      backLink(),
+    );
+    return;
+  }
+  const editing = submission;
+  document.title = `Edit event · Free Food @ UIUC`;
+
+  const form = element("form", "mt-2", "");
+  form.noValidate = true;
+  const clubInput = input("text", { maxlength: "120" });
+  const saveButton = element("button", PRIMARY_BUTTON, "Save changes");
+  saveButton.type = "submit";
+  const cancelLink = element("a", `${SECONDARY_BUTTON} inline-block`, "Cancel");
+  cancelLink.href = back.href;
+  const buttons = element("div", "mt-6 flex flex-wrap gap-3", "");
+  buttons.append(saveButton, cancelLink);
+  const status = element("p", "mt-3", "");
+  status.setAttribute("role", "status");
+  form.append(...renderFields(clubInput), buttons, status);
+
+  for (const [name, value] of Object.entries(submissionToForm(editing))) {
+    (form.elements.namedItem(name) as HTMLInputElement).value = value;
+  }
+  const clubLocked = !posting.isAdmin && editing.status === "approved";
+  if (clubLocked) {
+    clubInput.readOnly = true;
+    clubInput.classList.add("text-muted");
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(form)) as unknown as SubmissionForm;
+    const result = checkSubmission(values, new Date());
+    showProblems(form, result.ok ? {} : result.problems);
+    if (!result.ok) {
+      status.className = "mt-3 text-error";
+      status.textContent = "Check the highlighted fields.";
+      return;
+    }
+    saveButton.disabled = true;
+    saveButton.textContent = "Saving…";
+    status.textContent = "";
+    try {
+      if (await updateSubmission(editing.id, result.submission)) {
+        // The page it came from lists the event, so the new details are there to see.
+        window.location.href = back.href;
+        return;
+      }
+      status.className = "mt-3 text-error";
+      status.textContent = "This event can no longer be edited. It may have just been approved, ended, or been taken off the site.";
+    } catch {
+      status.className = "mt-3 text-error";
+      status.textContent = "Couldn't save your changes. They're still here, so check your connection and try again.";
+    }
+    saveButton.disabled = false;
+    saveButton.textContent = "Save changes";
+  });
+
+  content.replaceChildren(
+    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Edit event"),
+    element(
+      "p",
+      "mt-3",
+      editing.status === "approved" ? "Changes show on the site as soon as you save." : "Your changes go to the admin with the event.",
+    ),
+    ...(clubLocked ? [element("p", "mt-2 text-sm text-muted", "The club can't be changed. To list it under another club, take this one off the site and post it again.")] : []),
+    form,
+  );
 }
 
 interface PostingRights {
@@ -260,16 +389,31 @@ function eventTypeSelect(): HTMLSelectElement {
   return select;
 }
 
-function renderForm(user: User, mine: HTMLElement, posting: PostingRights): HTMLFormElement {
-  const form = element("form", "mt-2", "");
-  form.noValidate = true;
-  const clubInput = input("text", { maxlength: "120" });
-
+/** The event's fields, shared by the new-event and edit forms. */
+function renderFields(clubInput: HTMLInputElement): HTMLElement[] {
   const times = element("div", "grid grid-cols-2 gap-x-4", "");
   times.append(
     labelled("startTime", "Starts", input("time")),
     labelled("endTime", "Ends", input("time")),
   );
+  return [
+    labelled("title", "Event name", input("text", { maxlength: "150" })),
+    labelled("club", "Club or group", clubInput),
+    labelled("date", "Date", input("date", { value: campusDate(new Date()) })),
+    times,
+    element("p", "mt-1 text-sm text-muted", "Champaign time. An end time earlier than the start means it ends the next day."),
+    labelled("location", "Location", input("text", { maxlength: "150" }), "A building and room works best, such as Illini Union 314A."),
+    labelled("food", "Food", input("text", { maxlength: "100" }), "Separate items with commas, such as pizza, cookies."),
+    labelled("eventType", "Event type (optional)", eventTypeSelect()),
+    labelled("url", "Link (optional)", input("url", { inputmode: "url", placeholder: "https://" }), "A flyer, Instagram post, or event page helps the admin confirm it."),
+  ];
+}
+
+function renderForm(user: User, mine: HTMLElement, posting: PostingRights): HTMLFormElement {
+  const form = element("form", "mt-2", "");
+  form.noValidate = true;
+  const clubInput = input("text", { maxlength: "120" });
+
   const submitButton = element("button", PRIMARY_BUTTON, "Submit event");
   submitButton.type = "submit";
   // Resetting puts every field back to how the page opened, so the date returns to today.
@@ -280,19 +424,7 @@ function renderForm(user: User, mine: HTMLElement, posting: PostingRights): HTML
   const status = element("p", "mt-3", "");
   status.setAttribute("role", "status");
 
-  form.append(
-    labelled("title", "Event name", input("text", { maxlength: "150" })),
-    labelled("club", "Club or group", clubInput),
-    labelled("date", "Date", input("date", { value: campusDate(new Date()) })),
-    times,
-    element("p", "mt-1 text-sm text-muted", "Champaign time. An end time earlier than the start means it ends the next day."),
-    labelled("location", "Location", input("text", { maxlength: "150" }), "A building and room works best, such as Illini Union 314A."),
-    labelled("food", "Food", input("text", { maxlength: "100" }), "Separate items with commas, such as pizza, cookies."),
-    labelled("eventType", "Event type (optional)", eventTypeSelect()),
-    labelled("url", "Link (optional)", input("url", { inputmode: "url", placeholder: "https://" }), "A flyer, Instagram post, or event page helps the admin confirm it."),
-    buttons,
-    status,
-  );
+  form.append(...renderFields(clubInput), buttons, status);
 
   // Whether the event skips review: a manager posting for their own club, or an admin who leaves the box ticked.
   let skipsReview = () => false;
@@ -418,8 +550,15 @@ async function showMySubmissions(user: User, mine: HTMLElement): Promise<void> {
       element("p", "text-sm text-muted", describeWhen(submission.starts_at, submission.ends_at)),
       element("p", `mt-1 text-sm font-semibold ${submission.status === "rejected" ? "text-error" : "text-food"}`, statusText(submission)),
     );
+    const actions = element("div", "mt-2 flex flex-wrap gap-3", "");
+    if (submission.status === "pending" || (submission.club_post && submission.status === "approved")) {
+      actions.append(renderEditLink(submission, "submit"));
+    }
     if (submission.club_post && submission.status === "approved") {
-      item.append(renderTakeDownButton(submission, user, mine));
+      actions.append(...renderTakeDownButton(submission, () => showMySubmissions(user, mine)));
+    }
+    if (actions.childElementCount > 0) {
+      item.append(actions);
     }
     list.append(item);
   }
@@ -431,31 +570,6 @@ function statusText(submission: SubmittedEvent): string {
     return STATUS_TEXT[submission.status];
   }
   return submission.status === "approved" ? `On the site, posted for ${submission.club}` : "Taken off the site";
-}
-
-/** Lets a manager take down an event they posted for their club, e.g. one that was cancelled. */
-function renderTakeDownButton(submission: SubmittedEvent, user: User, mine: HTMLElement): HTMLElement {
-  const wrapper = element("div", "mt-2", "");
-  const button = element("button", "min-h-11 cursor-pointer rounded-sm border border-error px-3 text-sm font-semibold text-error disabled:opacity-60", "Take off the site");
-  button.type = "button";
-  button.setAttribute("aria-label", `Take "${submission.title}" off the site`);
-  const problem = element("p", "mt-1 text-sm text-error", "");
-  problem.setAttribute("role", "status");
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    button.textContent = "Taking it off…";
-    problem.textContent = "";
-    try {
-      await takeDownClubEvent(submission.id);
-      await showMySubmissions(user, mine);
-    } catch {
-      button.disabled = false;
-      button.textContent = "Take off the site";
-      problem.textContent = "That didn't go through. Check your connection and try again. If you're no longer a manager of this club, ask an admin.";
-    }
-  });
-  wrapper.append(button, problem);
-  return wrapper;
 }
 
 setUpPage();

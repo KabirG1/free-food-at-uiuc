@@ -70,3 +70,29 @@ export async function reviewSubmission(id: string, decision: "approved" | "rejec
   }
   return data === true;
 }
+
+/** One event for the edit form, or null if it has ended or this student can't see it. */
+export async function loadSubmission(id: string): Promise<SubmittedEvent | null> {
+  const [submission] = await loadSubmissions((query) => query.eq("id", id));
+  return submission ?? null;
+}
+
+/**
+ * Events on the site that the student can see but didn't necessarily post: for a club manager, their clubs' events
+ * (the database decides which). Soonest first.
+ */
+export async function loadEventsOnSite(): Promise<SubmittedEvent[]> {
+  return loadSubmissions((query) => query.eq("status", "approved"));
+}
+
+/** Saves edited details. Returns false if the event can no longer be edited, e.g. it was approved meanwhile. */
+export async function updateSubmission(id: string, submission: NewSubmission): Promise<boolean> {
+  if (supabase === null) {
+    return false;
+  }
+  const { data, error } = await supabase.rpc("update_submitted_event", { event_id: id, ...submission });
+  if (error) {
+    throw error;
+  }
+  return data === true;
+}

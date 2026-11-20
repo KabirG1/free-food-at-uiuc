@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseApprovedSubmissions } from "../src/approvedSubmissions.ts";
 import { foodKinds } from "../src/filters.ts";
-import { campusTime, checkSubmission, parseFoodList, type SubmissionForm } from "../src/submissionRules.ts";
+import { campusTime, checkSubmission, parseFoodList, submissionToForm, type SubmissionForm } from "../src/submissionRules.ts";
 
 const now = new Date("2026-11-06T12:00:00-06:00");
 
@@ -106,5 +106,21 @@ describe("parseApprovedSubmissions", () => {
   it("skips incomplete rows and fails on a response that isn't a list", () => {
     expect(parseApprovedSubmissions([{ ...row, title: "" }, { ...row, starts_at: "soon" }, null])).toEqual([]);
     expect(() => parseApprovedSubmissions({ message: "error" })).toThrow();
+  });
+});
+
+describe("submissionToForm", () => {
+  it("fills the edit form with the event's Champaign date and times, and checking it gives the same event back", () => {
+    const saved = { title: "Pizza Night", club: "Chess Club", starts_at: "2026-11-07T00:00:00+00:00", ends_at: "2026-11-07T02:30:00+00:00", location: "Illini Union", food: "Pizza", event_type: "Social", url: null };
+    const filled = submissionToForm(saved);
+    expect(filled).toMatchObject({ date: "2026-11-06", startTime: "18:00", endTime: "20:30", url: "" });
+    const result = checkSubmission(filled, now);
+    expect(result.ok && [Date.parse(result.submission.starts_at), Date.parse(result.submission.ends_at)]).toEqual([Date.parse(saved.starts_at), Date.parse(saved.ends_at)]);
+  });
+
+  it("keeps an event that runs past midnight ending the next day", () => {
+    const late = { title: "Late Night", club: "Chess Club", starts_at: "2026-11-07T05:00:00+00:00", ends_at: "2026-11-07T07:00:00+00:00", location: "Grainger", food: "Pizza", event_type: "", url: "https://example.com" };
+    const result = checkSubmission(submissionToForm(late), now);
+    expect(result.ok && result.submission.ends_at).toBe("2026-11-07T01:00:00-06:00");
   });
 });
