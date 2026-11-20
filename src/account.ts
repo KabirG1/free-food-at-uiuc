@@ -18,6 +18,7 @@ import {
 } from "./googleCalendar.ts";
 import { CALENDAR_NAME } from "./googleCalendarApi.ts";
 import { setUpPage } from "./layout.ts";
+import { renderThemePicker } from "./theme.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 
@@ -27,7 +28,7 @@ const DANGER_BUTTON = "rounded-sm border border-error px-4 py-2.5 font-semibold 
 
 async function showAccount(): Promise<void> {
   if (supabase === null) {
-    content.replaceChildren(heading("Accounts aren't set up"), paragraph("This copy of the site has no sign-in settings."));
+    content.replaceChildren(heading("Accounts aren't set up"), paragraph("This copy of the site has no sign-in settings."), renderThemePicker());
     return;
   }
   const user = await currentUser();
@@ -61,6 +62,7 @@ function signedOut(): HTMLElement[] {
     paragraph("Accounts are optional: everything on the site works without one. Signing in lets you save events, see them on any device, and submit events you know about."),
     buttonBox,
     status,
+    renderThemePicker(),
     privacyNote(),
   ];
 }
@@ -102,6 +104,7 @@ function signedIn(user: User): HTMLElement[] {
     element("p", "text-muted", user.email ?? ""),
     signOutButton,
     calendarSection(),
+    renderThemePicker(),
     element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", "Delete account"),
     paragraph("Removes your name, email, saved events, and followed clubs from the site for good."),
     deleteButton,

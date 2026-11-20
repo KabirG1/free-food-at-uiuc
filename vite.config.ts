@@ -1,13 +1,22 @@
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+import { EARLY_THEME_SCRIPT } from "./src/theme.ts";
 
 const page = (file: string) => fileURLToPath(new URL(file, import.meta.url));
+
+/** Puts the saved light/dark choice in place from every page's <head>, before anything is drawn. */
+function earlyTheme(): Plugin {
+  return {
+    name: "early-theme",
+    transformIndexHtml: () => [{ tag: "script", children: EARLY_THEME_SCRIPT, injectTo: "head" }],
+  };
+}
 
 export default defineConfig({
   // Relative paths let the same build work locally and under GitHub Pages' /free-food-at-uiuc/ folder.
   base: "./",
-  plugins: [tailwindcss()],
+  plugins: [tailwindcss(), earlyTheme()],
   build: {
     rollupOptions: {
       input: {

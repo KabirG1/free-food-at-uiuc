@@ -52,36 +52,32 @@
 }
 
 /*
- * Colors switch with the system's dark mode: black and white, with Illini Orange as the one accent.
- * Contrast ratios are against the page background unless noted.
+ * Black and white, with Illini Orange as the one accent. Each color is light-dark(light value, dark value):
+ * the browser picks by color-scheme, which follows the device unless someone picks Light or Dark on the
+ * Account page (src/theme.ts sets data-theme). Contrast ratios are against the page background unless noted.
  */
 :root {
-  --brand: #111111; /* header and footer background */
+  color-scheme: light dark;
+  --brand: light-dark(#111111, #000000); /* header and footer background */
   --on-brand: #ffffff;
   --on-brand-muted: #a8a8a8; /* 7.9:1 on the header */
   --brand-accent: #ff5f05; /* Illini Orange: on the black header, and as marks and rules (not small text on white, 3:1); 6.2:1 on the header */
-  --page: #ffffff;
-  --ink: #111111; /* 18.9:1 */
-  --muted: #5e5e5e; /* 6.5:1 */
-  --food: #c2410c; /* darker orange for small text, 5.2:1 */
-  --line: #d6d6d6;
-  --error: #b42318;
-  --selected: #111111; /* chosen calendar day */
-  --on-selected: #ffffff;
+  --page: light-dark(#ffffff, #111111);
+  --ink: light-dark(#111111, #f2f2f2); /* 18.9:1 light, 16.9:1 dark */
+  --muted: light-dark(#5e5e5e, #a3a3a3); /* 6.5:1 light, 7.5:1 dark */
+  --food: light-dark(#c2410c, #ff7a2e); /* darker orange for small text: 5.2:1 light, 7.3:1 dark */
+  --line: light-dark(#d6d6d6, #333333);
+  --error: light-dark(#b42318, #ff8a80);
+  --selected: light-dark(#111111, #f2f2f2); /* chosen calendar day */
+  --on-selected: light-dark(#ffffff, #111111);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --brand: #000000;
-    --page: #111111;
-    --ink: #f2f2f2; /* 16.9:1 */
-    --muted: #a3a3a3; /* 7.5:1 */
-    --food: #ff7a2e; /* 7.3:1 */
-    --line: #333333;
-    --error: #ff8a80;
-    --selected: #f2f2f2;
-    --on-selected: #111111;
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -100,10 +96,6 @@
 }
 
 @layer base {
-  :root {
-    color-scheme: light dark;
-  }
-
   body {
     background-color: var(--color-page);
     color: var(--color-ink);
