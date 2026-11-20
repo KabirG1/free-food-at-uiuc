@@ -4,6 +4,7 @@
 
 import type { User } from "@supabase/supabase-js";
 import { currentUser, supabase } from "./auth.ts";
+import { clubPageHref } from "./clubPages.ts";
 import { attachClubSuggestions } from "./clubSearch.ts";
 import {
   AlreadyOnTeamError,
@@ -190,8 +191,10 @@ function renderTeam(club: string, team: ManagerRequest[], events: SubmittedEvent
   const section = element("section", "", "");
   const postLink = element("a", `font-semibold ${LINK}`, "Post an event for this club");
   postLink.href = `./submit.html?club=${encodeURIComponent(club)}`;
-  const postLine = element("p", "mt-2", "");
-  postLine.append(postLink);
+  const pageLink = element("a", `font-semibold ${LINK}`, "View and edit the club's page");
+  pageLink.href = clubPageHref(club);
+  const postLine = element("p", "mt-2 flex flex-wrap gap-x-6 gap-y-2", "");
+  postLine.append(postLink, pageLink);
   section.append(
     element("h2", SECTION_HEADING, club),
     postLine,

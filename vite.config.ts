@@ -30,6 +30,7 @@ export default defineConfig({
         submit: page("submit.html"),
         review: page("review.html"),
         manage: page("manage.html"),
+        club: page("club.html"),
         search: page("search.html"),
         privacy: page("privacy.html"),
       },

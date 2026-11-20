@@ -191,3 +191,14 @@ export async function pendingReviewCount(): Promise<number | null> {
   }
   return typeof data === "number" ? data : null;
 }
+
+/** Saves a club's page. The database refuses it unless the student manages the club or is an admin. */
+export async function saveClubProfile(club: string, profile: { description: string; instagram: string; website: string }): Promise<void> {
+  if (supabase === null) {
+    return;
+  }
+  const { error } = await supabase.rpc("save_club_profile", { club, ...profile });
+  if (error) {
+    throw error;
+  }
+}

@@ -1,6 +1,7 @@
 // Loading the saved events and showing a day's list. Shared by the Today and Calendar pages.
 
 import { fetchApprovedSubmissions, parseApprovedSubmissions, withLiveSubmissions } from "./approvedSubmissions.ts";
+import { clubPage, clubPageHref, loadClubPages } from "./clubPages.ts";
 import { element } from "./dom.ts";
 import {
   CAMPUS_TIME_ZONE,
@@ -71,7 +72,8 @@ export function renderDateBlock(date: string, label: string, count: number, head
  * reached, the saved copy of those events from the last scheduled fetch is used instead.
  */
 export async function loadEventsFile(): Promise<EventsFile | null> {
-  const [file, live] = await Promise.all([loadSavedEvents(), loadLiveSubmissions()]);
+  // Club pages load alongside, so club names in the lists can link to them.
+  const [file, live] = await Promise.all([loadSavedEvents(), loadLiveSubmissions(), loadClubPages()]);
   return file !== null && live !== null ? withLiveSubmissions(file, live) : file;
 }
 
@@ -135,6 +137,23 @@ export function renderDay(dayEvents: FoodEvent[], date: string, now: Date, filte
     ...(current.length === 0 ? [note("Today's free food is over.")] : []),
     ...(ended.length > 0 ? [renderEarlierToday(ended)] : []),
   ];
+}
+
+/** One heading and list per day, in date order, for the Search and Club pages. `events` is already sorted by start time. */
+export function renderEventsByDay(events: FoodEvent[], today: string): HTMLElement[] {
+  const days = new Map<string, FoodEvent[]>();
+  for (const event of events) {
+    const date = campusDate(new Date(event.start));
+    days.set(date, [...(days.get(date) ?? []), event]);
+  }
+  return [...days].map(([date, dayEvents]) => {
+    const section = element("section", "mt-8", "");
+    section.append(
+      element("h2", "font-display text-lg font-bold", date === today ? `Today, ${formatDay(date)}` : formatDay(date)),
+      eventList(dayEvents, "mt-2"),
+    );
+    return section;
+  });
 }
 
 /** The next few days that have events after `today`, each with its list, and a link to the calendar. */
@@ -281,13 +300,23 @@ function renderStartTime(start: Date): HTMLElement {
   return time;
 }
 
-/** The hosting club above the event's name, with a Follow button when accounts are set up. */
+/**
+ * The hosting club above the event's name, with a Follow button when accounts are set up. Clubs with a page (ones
+ * that have managers) link to it.
+ */
 function renderClub(club: string): HTMLElement {
-  const name = element("p", "mb-1 font-mono text-xs tracking-wide text-muted uppercase", club);
+  const name = element("p", "mb-1 font-mono text-xs tracking-wide text-muted uppercase", "");
   if (club.trim() === "") {
     // Nothing to show, so no empty gap above the name either.
     name.hidden = true;
     return name;
+  }
+  if (clubPage(club)) {
+    const link = element("a", `text-ink ${LINK_CLASSES}`, club);
+    link.href = clubPageHref(club);
+    name.append(link);
+  } else {
+    name.textContent = club;
   }
   if (!savingAvailable) {
     return name;

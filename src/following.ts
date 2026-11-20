@@ -2,6 +2,7 @@
 // events, and each has an Unfollow button.
 
 import { supabase } from "./auth.ts";
+import { clubPage, clubPageHref, loadClubPages } from "./clubPages.ts";
 import { element } from "./dom.ts";
 import { renderMessage } from "./eventList.ts";
 import { syncAfterFollowing } from "./followButton.ts";
@@ -21,7 +22,8 @@ async function showFollowing(): Promise<void> {
   }
   let signedIn: boolean;
   try {
-    signedIn = await loadFollowedClubs();
+    // Club pages load alongside, so clubs that have one link to it.
+    [signedIn] = await Promise.all([loadFollowedClubs(), loadClubPages()]);
   } catch {
     content.replaceChildren(renderMessage("Couldn't load the clubs you follow", "Check your connection and refresh the page.", "error"));
     return;
@@ -73,9 +75,9 @@ function renderClubs(status: HTMLElement): HTMLElement[] {
       await syncAfterFollowing(calendar, name, false);
     });
     const item = element("li", "flex items-center justify-between gap-4 py-3", "");
-    // Opens Today with the Club filter set to this club.
+    // Opens the club's page if it has one, otherwise Today with the Club filter set to this club.
     const clubLink = element("a", "min-w-0 font-semibold underline decoration-line underline-offset-3 hover:decoration-current", name);
-    clubLink.href = `./?${new URLSearchParams({ club: name })}`;
+    clubLink.href = clubPage(name) ? clubPageHref(name) : `./?${new URLSearchParams({ club: name })}`;
     item.append(clubLink, unfollowButton);
     items.append(item);
   }
