@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { campusDate, coveredDates, eventsOnDates, type EventsFile, type FoodEvent } from "../src/events.ts";
 import { endedEventsToKeep, loadPreviousEvents } from "./previousEvents.ts";
 import { fetchOneIllinoisFeed, ONE_ILLINOIS_SOURCE, parseOneIllinoisFeed } from "./sources/oneIllinois.ts";
-import { fetchApprovedSubmissions, parseApprovedSubmissions, SUBMISSIONS_SOURCE_NAME } from "./sources/submissions.ts";
+import { fetchApprovedSubmissions, parseApprovedSubmissions, SUBMISSIONS_SOURCE_NAME } from "../src/approvedSubmissions.ts";
 
 const OUTPUT_PATH = "public/events.json";
 

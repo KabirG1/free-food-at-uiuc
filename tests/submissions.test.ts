@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseApprovedSubmissions } from "../scripts/sources/submissions.ts";
+import { parseApprovedSubmissions } from "../src/approvedSubmissions.ts";
 import { foodKinds } from "../src/filters.ts";
 import { campusTime, checkSubmission, parseFoodList, type SubmissionForm } from "../src/submissionRules.ts";
 

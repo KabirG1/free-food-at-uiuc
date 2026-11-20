@@ -9,9 +9,11 @@ export type SubmissionStatus = "pending" | "approved" | "rejected";
 export interface SubmittedEvent extends NewSubmission {
   id: string;
   status: SubmissionStatus;
+  /** Posted by one of the club's managers (or an admin), so it went on the site without review. */
+  club_post: boolean;
 }
 
-const COLUMNS = "id, title, club, starts_at, ends_at, location, food, event_type, url, status";
+const COLUMNS = "id, title, club, starts_at, ends_at, location, food, event_type, url, status, club_post";
 
 /** Thrown when the database refuses a submission, which means the student has too many waiting. */
 export class TooManyPendingError extends Error {}
@@ -67,16 +69,4 @@ export async function reviewSubmission(id: string, decision: "approved" | "rejec
     throw error;
   }
   return data === true;
-}
-
-/** How many events are waiting for review, or null for anyone who isn't an admin. */
-export async function pendingSubmissionCount(): Promise<number | null> {
-  if (supabase === null) {
-    return null;
-  }
-  const { data, error } = await supabase.rpc("pending_submission_count");
-  if (error) {
-    throw error;
-  }
-  return typeof data === "number" ? data : null;
 }

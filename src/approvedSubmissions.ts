@@ -1,16 +1,18 @@
-// Events students submitted and an admin approved, stored in Supabase (see supabase/003_submissions.sql).
+// Events students submitted and an admin approved, plus events club managers posted, stored in Supabase
+// (see supabase/003_submissions.sql and 009_club_managers.sql). The scheduled fetch saves them into events.json,
+// and every page also reads them live so new and removed ones show right away.
 
-import type { FoodEvent } from "../../src/events.ts";
-import { submissionToEvent, type ApprovedSubmission } from "../../src/submissionRules.ts";
+import { coveredDates, eventsOnDates, type EventsFile, type FoodEvent } from "./events.ts";
+import { SUBMISSION_SOURCE, submissionToEvent, type ApprovedSubmission } from "./submissionRules.ts";
 
 export const SUBMISSIONS_SOURCE_NAME = "student submissions";
 
-export async function fetchApprovedSubmissions(supabaseUrl: string, publishableKey: string): Promise<unknown> {
+export async function fetchApprovedSubmissions(supabaseUrl: string, publishableKey: string, timeoutMs = 30_000): Promise<unknown> {
   const response = await fetch(`${supabaseUrl}/rest/v1/rpc/approved_submissions`, {
     method: "POST",
     headers: { apikey: publishableKey, "Content-Type": "application/json" },
     body: "{}",
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
     throw new Error(`Supabase returned HTTP ${response.status}`);
@@ -39,4 +41,13 @@ function isApprovedSubmission(value: unknown): value is ApprovedSubmission {
     !Number.isNaN(Date.parse(row.starts_at as string)) &&
     !Number.isNaN(Date.parse(row.ends_at as string))
   );
+}
+
+/**
+ * The saved list with its submitted events swapped for the live ones, so an event posted or taken down since the
+ * last scheduled fetch shows correctly. Live events outside the saved list's dates are left out, as the fetch would.
+ */
+export function withLiveSubmissions(file: EventsFile, live: FoodEvent[]): EventsFile {
+  const fromOtherSources = file.events.filter((event) => event.source !== SUBMISSION_SOURCE);
+  return { ...file, events: eventsOnDates([...fromOtherSources, ...live], coveredDates(file.date)) };
 }

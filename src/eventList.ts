@@ -1,5 +1,6 @@
 // Loading the saved events and showing a day's list. Shared by the Today and Calendar pages.
 
+import { fetchApprovedSubmissions, parseApprovedSubmissions, withLiveSubmissions } from "./approvedSubmissions.ts";
 import { element } from "./dom.ts";
 import {
   CAMPUS_TIME_ZONE,
@@ -64,14 +65,38 @@ export function renderDateBlock(date: string, label: string, count: number, head
   return block;
 }
 
-/** Loads the saved events, or returns null if they can't be reached. */
+/**
+ * Loads the saved events, with submitted and club-posted events read live from the database so they show as soon
+ * as they're posted or taken down. Returns null if the saved events can't be reached. If the database can't be
+ * reached, the saved copy of those events from the last scheduled fetch is used instead.
+ */
 export async function loadEventsFile(): Promise<EventsFile | null> {
+  const [file, live] = await Promise.all([loadSavedEvents(), loadLiveSubmissions()]);
+  return file !== null && live !== null ? withLiveSubmissions(file, live) : file;
+}
+
+async function loadSavedEvents(): Promise<EventsFile | null> {
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}events.json`, { cache: "no-cache" });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/** A few seconds at most, so a slow database never holds up the list for long. */
+const LIVE_SUBMISSIONS_TIMEOUT_MS = 5_000;
+
+async function loadLiveSubmissions(): Promise<FoodEvent[] | null> {
+  const { VITE_SUPABASE_URL: url, VITE_SUPABASE_PUBLISHABLE_KEY: key } = import.meta.env;
+  if (!url || !key) {
+    return null;
+  }
+  try {
+    return parseApprovedSubmissions(await fetchApprovedSubmissions(url, key, LIVE_SUBMISSIONS_TIMEOUT_MS));
   } catch {
     return null;
   }

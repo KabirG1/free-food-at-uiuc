@@ -2,6 +2,7 @@
 
 import type { User } from "@supabase/supabase-js";
 import { currentUser, supabase } from "./auth.ts";
+import { loadMyRequests, managedClubs, pendingReviewCount, postClubEvent, takeDownClubEvent } from "./clubManagers.ts";
 import { element } from "./dom.ts";
 import { campusDate } from "./events.ts";
 import { renderMessage } from "./eventList.ts";
@@ -41,16 +42,91 @@ async function showSubmitPage(): Promise<void> {
     );
     return;
   }
+  const posting = await loadPostingRights(user);
   const mine = element("section", "", "");
-  const form = renderForm(user, mine);
+  const form = renderForm(user, mine, posting);
   content.replaceChildren(
     element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Submit an event"),
-    element("p", "mt-3", "Know about free food that isn't listed? Add it here. An admin checks each event before it goes on the site, and it appears at the site's next update after that."),
+    element("p", "mt-3", "Know about free food that isn't listed? Add it here. An admin checks each event before it goes on the site, and it appears as soon as it's approved."),
+    ...(posting.clubs.length === 0 && !posting.isAdmin ? [renderManageHint()] : []),
     renderFlyerUpload(form),
     form,
     mine,
   );
   await showMySubmissions(user, mine);
+}
+
+interface PostingRights {
+  /** Clubs the student manages, whose events go on the site without review. */
+  clubs: string[];
+  /** Admins can post for any club without review. */
+  isAdmin: boolean;
+}
+
+/** If this can't be checked, the form still works, with every event going to review. */
+async function loadPostingRights(user: User): Promise<PostingRights> {
+  try {
+    const [requests, pending] = await Promise.all([loadMyRequests(user.id), pendingReviewCount()]);
+    return { clubs: managedClubs(requests), isAdmin: pending !== null };
+  } catch {
+    return { clubs: [], isAdmin: false };
+  }
+}
+
+function renderManageHint(): HTMLElement {
+  const hint = element("p", "mt-2 text-sm text-muted", "Officer of a club? ");
+  const link = element("a", "underline decoration-line underline-offset-3 hover:decoration-current", "Ask to manage it");
+  link.href = "./manage.html";
+  hint.append(link, " and your club's events will go on the site without waiting for review.");
+  return hint;
+}
+
+const OTHER_CLUB = "";
+
+/**
+ * For club managers: a choice of which club they're posting for, above the form. Choosing one of their clubs fills
+ * in the Club field and locks it, and the event will skip review. "Another club" unlocks it and sends the event to
+ * review as usual. The club in the page address (`?club=`, from the Manage page) is chosen first if it's theirs.
+ */
+function renderPostingFor(clubs: string[], clubInput: HTMLInputElement): { fieldset: HTMLFieldSetElement; chosenClub: () => string } {
+  const fieldset = element("fieldset", "mt-5", "");
+  fieldset.append(element("legend", "font-semibold", "Posting for"));
+  const requested = new URLSearchParams(window.location.search).get("club");
+  const preferred = clubs.find((club) => club === requested) ?? clubs[0];
+  const options = [
+    ...clubs.map((club) => ({ value: club, label: club, note: "Goes on the site right away" })),
+    { value: OTHER_CLUB, label: "Another club or group", note: "An admin checks it first" },
+  ];
+  for (const [index, option] of options.entries()) {
+    const radio = element("input", "mt-1 size-5 shrink-0 accent-food", "");
+    radio.type = "radio";
+    radio.name = "postingFor";
+    radio.id = `posting-for-${index}`;
+    radio.value = option.value;
+    radio.defaultChecked = option.value === preferred;
+    const label = element("label", "flex cursor-pointer gap-3 py-2", "");
+    label.htmlFor = radio.id;
+    const text = element("span", "", "");
+    text.append(element("span", "block font-semibold", option.label), element("span", "block text-sm text-muted", option.note));
+    label.append(radio, text);
+    fieldset.append(label);
+  }
+  const chosenClub = () => fieldset.querySelector<HTMLInputElement>("input:checked")?.value ?? OTHER_CLUB;
+  const sync = () => {
+    const club = chosenClub();
+    clubInput.readOnly = club !== OTHER_CLUB;
+    clubInput.classList.toggle("text-muted", clubInput.readOnly);
+    if (club !== OTHER_CLUB) {
+      clubInput.value = club;
+    } else if (clubs.includes(clubInput.value)) {
+      clubInput.value = "";
+    }
+  };
+  fieldset.addEventListener("change", sync);
+  // The form's own reset (Clear form, or after posting) puts the choice back first; this then refills the Club field.
+  clubInput.form?.addEventListener("reset", () => setTimeout(sync));
+  sync();
+  return { fieldset, chosenClub };
 }
 
 /** Choosing a flyer fills in the form below it, for the student to check. It never submits anything by itself. */
@@ -127,8 +203,9 @@ function flyerErrorMessage(error: unknown): string {
 function fillForm(form: HTMLFormElement, details: FlyerDetails): void {
   for (const [name, value] of Object.entries(details)) {
     const control = form.elements.namedItem(name) as HTMLInputElement;
-    // The date starts as today, which would be misleading if the flyer didn't give one.
-    if (value !== "" || name === "date") {
+    // The date starts as today, which would be misleading if the flyer didn't give one. A locked Club field (a manager
+    // posting for their club) keeps its club.
+    if ((value !== "" || name === "date") && !control.readOnly) {
       control.value = value;
     }
   }
@@ -183,9 +260,10 @@ function eventTypeSelect(): HTMLSelectElement {
   return select;
 }
 
-function renderForm(user: User, mine: HTMLElement): HTMLFormElement {
+function renderForm(user: User, mine: HTMLElement, posting: PostingRights): HTMLFormElement {
   const form = element("form", "mt-2", "");
   form.noValidate = true;
+  const clubInput = input("text", { maxlength: "120" });
 
   const times = element("div", "grid grid-cols-2 gap-x-4", "");
   times.append(
@@ -204,7 +282,7 @@ function renderForm(user: User, mine: HTMLElement): HTMLFormElement {
 
   form.append(
     labelled("title", "Event name", input("text", { maxlength: "150" })),
-    labelled("club", "Club or group", input("text", { maxlength: "120" })),
+    labelled("club", "Club or group", clubInput),
     labelled("date", "Date", input("date", { value: campusDate(new Date()) })),
     times,
     element("p", "mt-1 text-sm text-muted", "Champaign time. An end time earlier than the start means it ends the next day."),
@@ -216,9 +294,28 @@ function renderForm(user: User, mine: HTMLElement): HTMLFormElement {
     status,
   );
 
+  // Whether the event skips review: a manager posting for their own club, or an admin who leaves the box ticked.
+  let skipsReview = () => false;
+  if (posting.clubs.length > 0 && !posting.isAdmin) {
+    const { fieldset, chosenClub } = renderPostingFor(posting.clubs, clubInput);
+    form.prepend(fieldset);
+    skipsReview = () => chosenClub() !== OTHER_CLUB;
+  }
+  if (posting.isAdmin) {
+    const { box, checkbox } = renderAdminPostNow();
+    buttons.before(box);
+    skipsReview = () => checkbox.checked;
+  }
+  const updateButton = () => {
+    submitButton.textContent = skipsReview() ? "Post event" : "Submit event";
+  };
+  form.addEventListener("change", updateButton);
+  form.addEventListener("reset", () => setTimeout(updateButton));
+  updateButton();
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    void handleSubmit(form, submitButton, status, user, mine);
+    void handleSubmit(form, submitButton, status, user, mine, skipsReview());
   });
   form.addEventListener("reset", () => {
     showProblems(form, {});
@@ -230,7 +327,20 @@ function renderForm(user: User, mine: HTMLElement): HTMLFormElement {
   return form;
 }
 
-async function handleSubmit(form: HTMLFormElement, button: HTMLButtonElement, status: HTMLElement, user: User, mine: HTMLElement): Promise<void> {
+/** For admins: a ticked box (the default) posts straight to the site; unticked sends it to review like anyone's. */
+function renderAdminPostNow(): { box: HTMLElement; checkbox: HTMLInputElement } {
+  const checkbox = input("checkbox", { id: "post-now" });
+  checkbox.className = "mt-1 size-5 shrink-0 accent-food";
+  checkbox.defaultChecked = true;
+  const box = element("label", "mt-6 flex cursor-pointer gap-3", "");
+  box.htmlFor = checkbox.id;
+  const text = element("span", "", "");
+  text.append(element("span", "block font-semibold", "Post right away, without review"), element("span", "block text-sm text-muted", "Because you're an admin. Untick to send it to the review queue."));
+  box.append(checkbox, text);
+  return { box, checkbox };
+}
+
+async function handleSubmit(form: HTMLFormElement, button: HTMLButtonElement, status: HTMLElement, user: User, mine: HTMLElement, postNow: boolean): Promise<void> {
   const values = Object.fromEntries(new FormData(form)) as unknown as SubmissionForm;
   const result = checkSubmission(values, new Date());
   showProblems(form, result.ok ? {} : result.problems);
@@ -240,30 +350,42 @@ async function handleSubmit(form: HTMLFormElement, button: HTMLButtonElement, st
     return;
   }
 
+  const buttonText = button.textContent;
   button.disabled = true;
-  button.textContent = "Submitting…";
+  button.textContent = postNow ? "Posting…" : "Submitting…";
   status.textContent = "";
   try {
-    await submitEvent(result.submission);
+    if (postNow) {
+      await postClubEvent(result.submission);
+    } else {
+      await submitEvent(result.submission);
+    }
     form.reset();
     status.className = "mt-3 font-semibold";
-    status.textContent = `Thanks! "${result.submission.title}" is waiting for review.`;
+    status.textContent = postNow ? `Posted! "${result.submission.title}" is on the site now.` : `Thanks! "${result.submission.title}" is waiting for review.`;
     await showMySubmissions(user, mine);
   } catch (error) {
     status.className = "mt-3 text-error";
     status.textContent =
       error instanceof TooManyPendingError
         ? "You have 10 events waiting for review, which is the limit. Try again once some are reviewed."
-        : "Couldn't submit that event. Your details are still here, so check your connection and try again.";
+        : postNow
+          ? "Couldn't post that event. Your details are still here, so check your connection and try again. If it keeps happening, an admin may have removed you as a manager; refresh the page to check."
+          : "Couldn't submit that event. Your details are still here, so check your connection and try again.";
   } finally {
     button.disabled = false;
-    button.textContent = "Submit event";
+    button.textContent = buttonText;
   }
 }
 
 function showProblems(form: HTMLFormElement, problems: FormProblems): void {
   let firstProblem: HTMLElement | null = null;
   for (const control of form.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")) {
+    const errorLine = form.querySelector(`#${control.id}-error`);
+    // The Posting for and admin choices have nothing to check.
+    if (errorLine === null) {
+      continue;
+    }
     const problem = problems[control.name as keyof SubmissionForm];
     if (problem) {
       control.setAttribute("aria-invalid", "true");
@@ -271,7 +393,7 @@ function showProblems(form: HTMLFormElement, problems: FormProblems): void {
     } else {
       control.removeAttribute("aria-invalid");
     }
-    form.querySelector(`#${control.id}-error`)!.textContent = problem ?? "";
+    errorLine.textContent = problem ?? "";
   }
   firstProblem?.focus();
 }
@@ -294,11 +416,46 @@ async function showMySubmissions(user: User, mine: HTMLElement): Promise<void> {
     item.append(
       element("p", "font-semibold", submission.title),
       element("p", "text-sm text-muted", describeWhen(submission.starts_at, submission.ends_at)),
-      element("p", `mt-1 text-sm font-semibold ${submission.status === "rejected" ? "text-error" : "text-food"}`, STATUS_TEXT[submission.status]),
+      element("p", `mt-1 text-sm font-semibold ${submission.status === "rejected" ? "text-error" : "text-food"}`, statusText(submission)),
     );
+    if (submission.club_post && submission.status === "approved") {
+      item.append(renderTakeDownButton(submission, user, mine));
+    }
     list.append(item);
   }
   mine.replaceChildren(element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", "Your submissions"), list);
+}
+
+function statusText(submission: SubmittedEvent): string {
+  if (!submission.club_post) {
+    return STATUS_TEXT[submission.status];
+  }
+  return submission.status === "approved" ? `On the site, posted for ${submission.club}` : "Taken off the site";
+}
+
+/** Lets a manager take down an event they posted for their club, e.g. one that was cancelled. */
+function renderTakeDownButton(submission: SubmittedEvent, user: User, mine: HTMLElement): HTMLElement {
+  const wrapper = element("div", "mt-2", "");
+  const button = element("button", "min-h-11 cursor-pointer rounded-sm border border-error px-3 text-sm font-semibold text-error disabled:opacity-60", "Take off the site");
+  button.type = "button";
+  button.setAttribute("aria-label", `Take "${submission.title}" off the site`);
+  const problem = element("p", "mt-1 text-sm text-error", "");
+  problem.setAttribute("role", "status");
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    button.textContent = "Taking it off…";
+    problem.textContent = "";
+    try {
+      await takeDownClubEvent(submission.id);
+      await showMySubmissions(user, mine);
+    } catch {
+      button.disabled = false;
+      button.textContent = "Take off the site";
+      problem.textContent = "That didn't go through. Check your connection and try again. If you're no longer a manager of this club, ask an admin.";
+    }
+  });
+  wrapper.append(button, problem);
+  return wrapper;
 }
 
 setUpPage();

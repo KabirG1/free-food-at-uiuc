@@ -1,20 +1,27 @@
-// The Review page, for admins: approve or reject submitted events, and take approved ones back off the site.
-// Hiding this page from others is only a courtesy. The database refuses decisions from anyone who isn't an admin.
+// The Review page, for admins: approve or reject submitted events, take approved ones back off the site, and decide
+// who manages which club. Hiding this page from others is only a courtesy. The database refuses decisions from
+// anyone who isn't an admin.
 
 import { currentUser, supabase } from "./auth.ts";
+import { decideManagerRequest, loadRequestsToReview, pendingReviewCount, type ManagerRequest } from "./clubManagers.ts";
 import { element } from "./dom.ts";
 import { renderMessage } from "./eventList.ts";
 import { setUpPage } from "./layout.ts";
 import { isHttpsUrl } from "./submissionRules.ts";
-import { loadSubmissionsToReview, pendingSubmissionCount, reviewSubmission, type SubmittedEvent } from "./submissions.ts";
+import { loadSubmissionsToReview, reviewSubmission, type SubmittedEvent } from "./submissions.ts";
 import { describeWhen } from "./submissionView.ts";
 
 const content = document.querySelector<HTMLElement>("#content")!;
 
-const WORKFLOW_URL = "https://github.com/kabirg1/free-food-at-uiuc/actions/workflows/deploy.yml";
 const LINK = "underline decoration-line underline-offset-3 hover:decoration-current";
 const APPROVE_BUTTON = "cursor-pointer rounded-sm bg-selected px-4 py-2.5 font-semibold text-on-selected disabled:opacity-60";
 const REJECT_BUTTON = "cursor-pointer rounded-sm border border-error px-4 py-2.5 font-semibold text-error disabled:opacity-60";
+const SECTION_HEADING = "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold";
+
+interface ReviewData {
+  submissions: SubmittedEvent[];
+  managers: ManagerRequest[];
+}
 
 async function showReviewPage(): Promise<void> {
   if (supabase === null) {
@@ -28,51 +35,93 @@ async function showReviewPage(): Promise<void> {
     return;
   }
 
-  let submissions: SubmittedEvent[];
+  let data: ReviewData;
   try {
-    if ((await pendingSubmissionCount()) === null) {
+    if ((await pendingReviewCount()) === null) {
       content.replaceChildren(renderMessage("This page is for admins", "Your account can't review events. You can still submit one from the Submit page.", "empty"));
       return;
     }
-    submissions = await loadSubmissionsToReview();
+    data = await loadReviewData();
   } catch {
     content.replaceChildren(renderMessage("Couldn't load submissions", "Check your connection and refresh the page.", "error"));
     return;
   }
-  renderSubmissions(submissions);
+  renderPage(data);
 }
 
-function renderSubmissions(submissions: SubmittedEvent[], notice = ""): void {
+async function loadReviewData(): Promise<ReviewData> {
+  const [submissions, managers] = await Promise.all([loadSubmissionsToReview(), loadRequestsToReview()]);
+  return { submissions, managers };
+}
+
+function renderPage({ submissions, managers }: ReviewData, notice = ""): void {
   const pending = submissions.filter((submission) => submission.status === "pending");
   const approved = submissions.filter((submission) => submission.status === "approved");
+  const requests = managers.filter((request) => request.status === "pending");
+  const current = managers.filter((request) => request.status === "approved");
   const noticeLine = element("p", "mt-3 font-semibold", notice);
   noticeLine.setAttribute("role", "status");
 
   content.replaceChildren(
-    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Review submissions"),
+    element("h1", "mt-8 font-display text-2xl leading-tight font-extrabold sm:text-3xl", "Review"),
     noticeLine,
-    element("h2", "mt-8 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", `Waiting for review (${pending.length})`),
-    pending.length > 0 ? renderList(pending) : element("p", "mt-2 text-muted", "Nothing is waiting right now."),
-    element("h2", "mt-10 border-t-2 border-ink pt-4 font-display text-xl leading-tight font-bold", `Approved (${approved.length})`),
-    updateNote(),
-    ...(approved.length > 0 ? [renderList(approved)] : []),
+    element("h2", SECTION_HEADING.replace("mt-10", "mt-8"), `Events waiting for review (${pending.length})`),
+    pending.length > 0 ? renderList(pending.map(renderSubmission)) : element("p", "mt-2 text-muted", "Nothing is waiting right now."),
+    element("h2", SECTION_HEADING, `Club manager requests (${requests.length})`),
+    requests.length > 0 ? renderList(requests.map(renderManager)) : element("p", "mt-2 text-muted", "No requests right now."),
+    element("p", "mt-2 text-sm text-muted", "Before approving, check that the person is listed as an officer on the club's OneIllinois page."),
+    element("h2", SECTION_HEADING, `On the site (${approved.length})`),
+    element("p", "mt-2 text-sm text-muted", "Approved events and events club managers posted. Changes show on the site right away."),
+    ...(approved.length > 0 ? [renderList(approved.map(renderSubmission))] : []),
+    element("h2", SECTION_HEADING, `Club managers (${current.length})`),
+    current.length > 0 ? renderList(current.map(renderManager)) : element("p", "mt-2 text-muted", "No clubs have managers yet."),
   );
 }
 
-function updateNote(): HTMLElement {
-  const note = element("p", "mt-2 text-sm text-muted", "Approved events appear at the site's next update, four times a day. If you have access to the GitHub repository, you can ");
-  const link = element("a", LINK, "run the update now");
-  link.href = WORKFLOW_URL;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  note.append(link, ".");
-  return note;
+function renderList(items: HTMLElement[]): HTMLElement {
+  const list = element("ul", "mt-3 divide-y divide-line border-y border-line", "");
+  list.append(...items);
+  return list;
 }
 
-function renderList(submissions: SubmittedEvent[]): HTMLElement {
-  const list = element("ul", "mt-3 divide-y divide-line border-y border-line", "");
-  list.append(...submissions.map(renderSubmission));
-  return list;
+interface Action {
+  label: string;
+  workingText: string;
+  style: string;
+  /** Returns false if someone else already decided. */
+  run: () => Promise<boolean>;
+  doneText: string;
+}
+
+/** Buttons that each make one decision, then reload the page with a note saying what happened. */
+function renderActions(name: string, actions: Action[]): HTMLElement[] {
+  const buttons = element("div", "mt-3 flex flex-wrap gap-3", "");
+  const problem = element("p", "mt-2 text-sm text-error", "");
+  problem.setAttribute("role", "status");
+  const setDisabled = (disabled: boolean) => {
+    for (const each of buttons.querySelectorAll("button")) {
+      each.disabled = disabled;
+    }
+  };
+  for (const action of actions) {
+    const button = element("button", action.style, action.label);
+    button.type = "button";
+    button.addEventListener("click", async () => {
+      setDisabled(true);
+      button.textContent = action.workingText;
+      problem.textContent = "";
+      try {
+        const applied = await action.run();
+        renderPage(await loadReviewData(), applied ? `${action.doneText}: ${name}` : `Another admin already decided on "${name}".`);
+      } catch {
+        button.textContent = action.label;
+        setDisabled(false);
+        problem.textContent = "That didn't go through. Check your connection and try again.";
+      }
+    });
+    buttons.append(button);
+  }
+  return [buttons, problem];
 }
 
 function renderSubmission(submission: SubmittedEvent): HTMLElement {
@@ -84,6 +133,9 @@ function renderSubmission(submission: SubmittedEvent): HTMLElement {
     element("p", "mt-1", submission.location),
     element("p", "mt-1 font-semibold text-food", submission.food),
   );
+  if (submission.club_post) {
+    item.append(element("p", "mt-1 font-mono text-xs tracking-wide uppercase", "Posted by a club manager"));
+  }
   if (submission.event_type !== "") {
     item.append(element("p", "mt-1 text-sm text-muted", submission.event_type));
   }
@@ -98,48 +150,40 @@ function renderSubmission(submission: SubmittedEvent): HTMLElement {
     item.append(line);
   }
 
-  const buttons = element("div", "mt-3 flex flex-wrap gap-3", "");
-  const problem = element("p", "mt-2 text-sm text-error", "");
-  problem.setAttribute("role", "status");
-  const decide = (button: HTMLButtonElement, workingText: string, decision: "approved" | "rejected", doneText: string) => {
-    button.addEventListener("click", async () => {
-      for (const each of buttons.querySelectorAll("button")) {
-        each.disabled = true;
-      }
-      const originalText = button.textContent;
-      button.textContent = workingText;
-      problem.textContent = "";
-      try {
-        const applied = await reviewSubmission(submission.id, decision);
-        renderSubmissions(
-          await loadSubmissionsToReview(),
-          applied ? `${doneText}: ${submission.title}` : `Another admin already decided on "${submission.title}".`,
-        );
-      } catch {
-        button.textContent = originalText;
-        for (const each of buttons.querySelectorAll("button")) {
-          each.disabled = false;
-        }
-        problem.textContent = "That didn't go through. Check your connection and try again.";
-      }
-    });
-  };
+  const decide = (decision: "approved" | "rejected") => () => reviewSubmission(submission.id, decision);
+  item.append(
+    ...renderActions(
+      submission.title,
+      submission.status === "pending"
+        ? [
+            { label: "Approve", workingText: "Approving…", style: APPROVE_BUTTON, run: decide("approved"), doneText: "Approved" },
+            { label: "Reject", workingText: "Rejecting…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Rejected" },
+          ]
+        : [{ label: "Take off the site", workingText: "Removing…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Taken off the site" }],
+    ),
+  );
+  return item;
+}
 
-  if (submission.status === "pending") {
-    const approve = element("button", APPROVE_BUTTON, "Approve");
-    const reject = element("button", REJECT_BUTTON, "Reject");
-    approve.type = "button";
-    reject.type = "button";
-    decide(approve, "Approving…", "approved", "Approved");
-    decide(reject, "Rejecting…", "rejected", "Rejected");
-    buttons.append(approve, reject);
-  } else {
-    const remove = element("button", REJECT_BUTTON, "Take off the site");
-    remove.type = "button";
-    decide(remove, "Removing…", "rejected", "Taken off at the next update");
-    buttons.append(remove);
-  }
-  item.append(buttons, problem);
+function renderManager(request: ManagerRequest): HTMLElement {
+  const item = element("li", "py-4", "");
+  item.append(
+    element("p", "text-lg leading-tight font-semibold", request.club),
+    element("p", "mt-1", `${request.role} · ${request.email}`),
+  );
+  const decide = (decision: "approved" | "rejected" | "removed") => () => decideManagerRequest(request.id, decision);
+  const who = `${request.email} for ${request.club}`;
+  item.append(
+    ...renderActions(
+      who,
+      request.status === "pending"
+        ? [
+            { label: "Approve", workingText: "Approving…", style: APPROVE_BUTTON, run: decide("approved"), doneText: "Approved" },
+            { label: "Reject", workingText: "Rejecting…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Rejected" },
+          ]
+        : [{ label: "Remove as manager", workingText: "Removing…", style: REJECT_BUTTON, run: decide("removed"), doneText: "Removed" }],
+    ),
+  );
   return item;
 }
 

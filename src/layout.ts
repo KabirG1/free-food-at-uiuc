@@ -167,7 +167,7 @@ function renderNav(nav: HTMLElement, pathname: string): void {
     nav.append(renderSearchForm("header-search", "ml-auto hidden w-48 sm:block"));
   }
   if (import.meta.env.VITE_SUPABASE_URL) {
-    const account = renderAccountControl(["account", "saved", "following", "review"].includes(pageKey(pathname)));
+    const account = renderAccountControl(["account", "saved", "following", "manage", "review"].includes(pageKey(pathname)));
     if (showSearch) {
       // On wider screens the search box already takes up the space on the right.
       account.classList.add("sm:ml-0");
@@ -235,6 +235,8 @@ function renderAccountControl(current: boolean): HTMLElement {
     savedLink.href = pageHref("saved");
     const followingLink = element("a", menuItem, "Following");
     followingLink.href = pageHref("following");
+    const manageLink = element("a", menuItem, "Manage a club");
+    manageLink.href = pageHref("manage");
     const settingsLink = element("a", menuItem, "Account settings");
     settingsLink.href = pageHref("account");
     const signOutButton = element("button", `${menuItem} border-t border-line`, "Sign out");
@@ -245,16 +247,17 @@ function renderAccountControl(current: boolean): HTMLElement {
       await signOut();
       window.location.reload();
     });
-    panel.append(who, savedLink, followingLink, settingsLink, signOutButton);
+    panel.append(who, savedLink, followingLink, manageLink, settingsLink, signOutButton);
 
-    // Only admins get this link, with how many events are waiting. If the check fails, the menu just goes without it.
-    void import("./submissions.ts")
-      .then(({ pendingSubmissionCount }) => pendingSubmissionCount())
+    // Only admins get this link, with how many events and club manager requests are waiting. If the check fails,
+    // the menu just goes without it.
+    void import("./clubManagers.ts")
+      .then(({ pendingReviewCount }) => pendingReviewCount())
       .then((pending) => {
         if (pending !== null) {
-          const reviewLink = element("a", menuItem, `Review submissions (${pending})`);
+          const reviewLink = element("a", menuItem, `Review (${pending})`);
           reviewLink.href = pageHref("review");
-          followingLink.after(reviewLink);
+          manageLink.after(reviewLink);
         }
       })
       .catch(() => undefined);
