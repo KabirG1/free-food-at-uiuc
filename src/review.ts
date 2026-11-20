@@ -3,7 +3,7 @@
 // anyone who isn't an admin.
 
 import { currentUser, supabase } from "./auth.ts";
-import { decideManagerRequest, loadRequestsToReview, pendingReviewCount, type ManagerRequest } from "./clubManagers.ts";
+import { decideManagerRequest, loadRequestsToReview, pendingReviewCount, removeManager, roleText, type ManagerRequest } from "./clubManagers.ts";
 import { element } from "./dom.ts";
 import { renderMessage } from "./eventList.ts";
 import { setUpPage } from "./layout.ts";
@@ -58,7 +58,8 @@ function renderPage({ submissions, managers }: ReviewData, notice = ""): void {
   const pending = submissions.filter((submission) => submission.status === "pending");
   const approved = submissions.filter((submission) => submission.status === "approved");
   const requests = managers.filter((request) => request.status === "pending");
-  const current = managers.filter((request) => request.status === "approved");
+  // Managers and open invitations together, grouped by club, so each club's whole team shows in one place.
+  const current = managers.filter((request) => request.status === "approved" || request.status === "invited");
   const noticeLine = element("p", "mt-3 font-semibold", notice);
   noticeLine.setAttribute("role", "status");
 
@@ -169,21 +170,23 @@ function renderManager(request: ManagerRequest): HTMLElement {
   const item = element("li", "py-4", "");
   item.append(
     element("p", "text-lg leading-tight font-semibold", request.club),
-    element("p", "mt-1", `${request.role} · ${request.email}`),
+    element("p", "mt-1 break-all", `${request.status === "invited" ? "Invited" : roleText(request)} · ${request.email}`),
   );
-  const decide = (decision: "approved" | "rejected" | "removed") => () => decideManagerRequest(request.id, decision);
+  if (request.added_by_email) {
+    item.append(element("p", "mt-1 text-sm text-muted break-all", `Added by ${request.added_by_email}`));
+  }
+  const decide = (decision: "approved" | "rejected") => () => decideManagerRequest(request.id, decision);
+  const remove = () => removeManager(request.id);
   const who = `${request.email} for ${request.club}`;
-  item.append(
-    ...renderActions(
-      who,
-      request.status === "pending"
-        ? [
-            { label: "Approve", workingText: "Approving…", style: APPROVE_BUTTON, run: decide("approved"), doneText: "Approved" },
-            { label: "Reject", workingText: "Rejecting…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Rejected" },
-          ]
-        : [{ label: "Remove as manager", workingText: "Removing…", style: REJECT_BUTTON, run: decide("removed"), doneText: "Removed" }],
-    ),
-  );
+  const actions: Record<"pending" | "approved" | "invited", Action[]> = {
+    pending: [
+      { label: "Approve", workingText: "Approving…", style: APPROVE_BUTTON, run: decide("approved"), doneText: "Approved" },
+      { label: "Reject", workingText: "Rejecting…", style: REJECT_BUTTON, run: decide("rejected"), doneText: "Rejected" },
+    ],
+    approved: [{ label: "Remove as manager", workingText: "Removing…", style: REJECT_BUTTON, run: remove, doneText: "Removed" }],
+    invited: [{ label: "Withdraw invitation", workingText: "Withdrawing…", style: REJECT_BUTTON, run: remove, doneText: "Invitation withdrawn" }],
+  };
+  item.append(...renderActions(who, actions[request.status as keyof typeof actions] ?? []));
   return item;
 }
 

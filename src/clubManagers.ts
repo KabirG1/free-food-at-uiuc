@@ -5,7 +5,7 @@ import { supabase } from "./auth.ts";
 import { clubKey } from "./events.ts";
 import type { NewSubmission } from "./submissionRules.ts";
 
-export type ManagerStatus = "pending" | "approved" | "rejected" | "removed";
+export type ManagerStatus = "pending" | "approved" | "rejected" | "removed" | "invited" | "declined" | "cancelled";
 
 export interface ManagerRequest {
   id: string;
@@ -14,9 +14,11 @@ export interface ManagerRequest {
   role: string;
   status: ManagerStatus;
   requested_at: string;
+  /** For someone a manager invited: the inviter's email. Null for someone who asked an admin. */
+  added_by_email: string | null;
 }
 
-const COLUMNS = "id, email, club, role, status, requested_at";
+const COLUMNS = "id, email, club, role, status, requested_at, added_by_email";
 
 /** Thrown when the student already has a request waiting for this club or already manages it. */
 export class AlreadyRequestedError extends Error {}
@@ -46,10 +48,79 @@ export async function loadMyRequests(userId: string): Promise<ManagerRequest[]> 
   return loadRequests((query) => query.eq("user_id", userId));
 }
 
-/** For admins: requests waiting for a decision and current managers, by club. */
+/** For admins: requests waiting for a decision, current managers, and open invitations, by club. */
 export async function loadRequestsToReview(): Promise<ManagerRequest[]> {
-  const requests = await loadRequests((query) => query.in("status", ["pending", "approved"]));
+  return sortedByClub(await loadRequests((query) => query.in("status", ["pending", "approved", "invited"])));
+}
+
+/**
+ * Current managers and open invitations the student can see: everyone on the clubs they manage, plus invitations
+ * sent to them. (The database decides what's visible; for admins that's every club.)
+ */
+export async function loadClubTeams(): Promise<ManagerRequest[]> {
+  return sortedByClub(await loadRequests((query) => query.in("status", ["approved", "invited"])));
+}
+
+function sortedByClub(requests: ManagerRequest[]): ManagerRequest[] {
   return requests.sort((a, b) => clubKey(a.club).localeCompare(clubKey(b.club)));
+}
+
+/** "President", or "Manager" for someone who joined by invitation and has no role on file. */
+export function roleText(request: ManagerRequest): string {
+  return request.role.trim() === "" ? "Manager" : request.role;
+}
+
+/** Thrown when the person already manages the club, is already invited, or has asked an admin. */
+export class AlreadyOnTeamError extends Error {}
+
+/** Thrown when the club has 10 managers and invitations, which is the limit. */
+export class TeamFullError extends Error {}
+
+/** Invites someone to manage `club` with the student. The database checks the student manages it. */
+export async function inviteManager(club: string, email: string): Promise<void> {
+  if (supabase === null) {
+    return;
+  }
+  const { error } = await supabase.rpc("invite_club_manager", { club, email });
+  // 23505: the one-active-row-per-person rule. 54000: the per-club limit.
+  if (error?.code === "23505") {
+    throw new AlreadyOnTeamError();
+  }
+  if (error?.code === "54000") {
+    throw new TeamFullError();
+  }
+  if (error) {
+    throw error;
+  }
+}
+
+/** Accepts or declines an invitation. Returns false if it was cancelled or already answered. */
+export async function respondToInvitation(id: string, accept: boolean): Promise<boolean> {
+  if (supabase === null) {
+    return false;
+  }
+  const { data, error } = await supabase.rpc("respond_to_invitation", { invitation_id: id, accept });
+  if (error) {
+    throw error;
+  }
+  return data === true;
+}
+
+/** Removes a manager or cancels an invitation, including the student leaving. Returns false if it already changed. */
+export async function removeManager(id: string): Promise<boolean> {
+  if (supabase === null) {
+    return false;
+  }
+  const { data, error } = await supabase.rpc("remove_club_manager", { manager_id: id });
+  if (error) {
+    throw error;
+  }
+  return data === true;
+}
+
+/** The email check the database also makes, so the form can explain it first. */
+export function isIllinoisEmail(text: string): boolean {
+  return /^[^@\s]+@illinois\.edu$/i.test(text.trim());
 }
 
 async function loadRequests(narrow: <Q extends RequestQuery>(query: Q) => Q): Promise<ManagerRequest[]> {
